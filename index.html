@@ -1704,6 +1704,9 @@
           // Update the analysis panels in the modal using the CURRENTLY selected data point
           updateModalAnalysisData(currentData);
           
+          // Set up analysis tab event listeners when modal opens
+          setupAnalysisTabListeners();
+          
           modalOverlay.classList.add('visible');
         }
       });
@@ -2210,19 +2213,7 @@
           generateExplanationBtn.addEventListener('click', generateAIExplanation);
         }
 
-        // Modal analysis tabs
-        document.querySelectorAll('.analysis-tab').forEach(tab => {
-          tab.addEventListener('click', (e) => {
-            const tabName = e.target.getAttribute('data-analysis-tab');
-            switchModalAnalysisTab(tabName);
-          });
-        });
 
-        // Modal AI explanation button
-        const modalGenerateExplanationBtn = document.getElementById('modal-generate-explanation');
-        if (modalGenerateExplanationBtn) {
-          modalGenerateExplanationBtn.addEventListener('click', generateModalAIExplanation);
-        } 
 
         // Event Listener for the Dashboard Button ---
         if (openDashboardBtn) {
@@ -2488,6 +2479,30 @@
           causalAnalysis,
           trendData
         };
+      }
+
+      function setupAnalysisTabListeners() {
+        // Remove any existing event listeners to avoid duplicates
+        document.querySelectorAll('.analysis-tab').forEach(tab => {
+          tab.replaceWith(tab.cloneNode(true));
+        });
+        
+        // Add event listeners to analysis tabs
+        document.querySelectorAll('.analysis-tab').forEach(tab => {
+          tab.addEventListener('click', (e) => {
+            const tabName = e.target.getAttribute('data-analysis-tab');
+            switchModalAnalysisTab(tabName);
+          });
+        });
+        
+        // Set up modal AI explanation button
+        const modalGenerateExplanationBtn = document.getElementById('modal-generate-explanation');
+        if (modalGenerateExplanationBtn) {
+          // Remove existing event listener to avoid duplicates
+          modalGenerateExplanationBtn.replaceWith(modalGenerateExplanationBtn.cloneNode(true));
+          // Add fresh event listener
+          document.getElementById('modal-generate-explanation').addEventListener('click', generateModalAIExplanation);
+        }
       }
 
       function switchModalAnalysisTab(tabName) {
