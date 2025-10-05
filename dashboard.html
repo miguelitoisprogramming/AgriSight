@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vegetation Index Monitoring Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            height: 60vh;
+            width: 100%;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        /* Custom styles for date picker */
+        input[type="date"] {
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            color: #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-green-800">Farm Health Dashboard</h1>
+            <p class="text-lg text-gray-600 mt-2">Monthly Vegetation Index (EVI) Trends for Davao City</p>
+        </header>
+
+        <!-- Filter Section -->
+        <div class="card p-4 md:p-6 mb-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 class="text-xl font-bold text-gray-700">Filter by Date</h2>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                        <input type="date" id="startDate" name="startDate">
+                    </div>
+                    <div>
+                        <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                        <input type="date" id="endDate" name="endDate">
+                    </div>
+                    <div class="flex items-end h-full">
+                        <button id="filterBtn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">Apply Filter</button>
+                        <button id="resetBtn" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors ml-2">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboard-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Main Chart Section -->
+                <div class="lg:col-span-2 card p-4 md:p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-700">EVI Analysis</h2>
+                            <p class="text-gray-500">Showing EVI data for your farm.</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="vegetationChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Insights and Recommendations Section -->
+                <div class="card p-4 md:p-6 flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-700 mb-2 sm:mb-0">Farmer's Decision Support</h2>
+                    </div>
+                    <div id="recommendation-box" class="flex-grow">
+                        <div class="flex items-center mb-3">
+                            <div id="status-icon" class="w-12 h-12 rounded-full flex items-center justify-center mr-4 bg-gray-100 text-gray-600">
+                                <!-- Icon will be inserted by JS -->
+                            </div>
+                            <div>
+                                <p class="font-semibold text-lg">EVI Status: <span id="vi-status" class="font-bold"></span></p>
+                                <p class="text-gray-500 text-sm">For <span id="current-month-text"></span></p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-100 p-4 rounded-lg">
+                            <h3 class="font-semibold text-lg mb-2 text-gray-800">Recommendations</h3>
+                            <ul id="recommendation-list" class="list-disc list-inside space-y-2 text-gray-700">
+                                <!-- Recommendations populated by JS -->
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Legend</h3>
+                        <div>
+                            <h4 class="font-semibold text-sm mb-2 text-gray-600">EVI Growth Level</h4>
+                            <div class="space-y-2">
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                                    <span class="text-sm">High Growth (> 0.6)</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-orange-400 rounded-full mr-2"></div>
+                                    <span class="text-sm">Moderate (0.4-0.6)</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                                    <span class="text-sm">Low/Stress (<= 0.4)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trend Summary -->
+            <div class="grid grid-cols-1 gap-8 mt-8">
+                <div class="card p-4 md:p-6">
+                    <h2 class="text-2xl font-bold text-gray-700 mb-4">Trend Summary</h2>
+                    <p class="text-gray-500 mb-4">Key metrics from the selected EVI data range.</p>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg">
+                            <span class="font-semibold text-green-800">Peak Growth Date</span>
+                            <span id="peak-month" class="font-bold text-green-800">-.--</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-red-50 p-3 rounded-lg">
+                            <span class="font-semibold text-red-800">Lowest Growth Date</span>
+                            <span id="low-month" class="font-bold text-red-800">-.--</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-blue-50 p-3 rounded-lg">
+                            <span class="font-semibold text-blue-800">Overall Trend</span>
+                            <span id="overall-trend" class="font-bold text-blue-800">-.--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('vegetationChart').getContext('2d');
+            
+            const realDataLabels = ["1/1/25", "1/17/25", "2/2/25", "2/18/25", "3/6/25", "3/22/25", "4/7/25", "4/23/25", "5/9/25", "5/25/25", "6/10/25", "6/26/25", "7/12/25", "7/28/25", "8/13/25", "8/29/25", "9/14/25"];
+            const realEviData = [0.501, 0.471, 0.495, 0.465, 0.489, 0.471, 0.580, 0.530, 0.571, 0.550, 0.533, 0.449, 0.550, 0.557, 0.530, 0.478, 0.556];
+            
+            const recommendationsFull = {
+                high: {
+                    general: ["Canopy is dense; monitor for pests/diseases that thrive in humid conditions.", "Ensure nutrient levels are sufficient to sustain peak growth.", "Consider selective pruning to improve air circulation and light penetration."]
+                },
+                moderate: {
+                    general: ["Maintain consistent irrigation and fertilization schedules.", "Scout for early signs of nutrient deficiency or pest infestation.", "Continue regular field monitoring."]
+                },
+                low: {
+                   general: ["Investigate for potential water stress, check irrigation systems.", "Conduct soil analysis to identify potential nutrient deficiencies.", "Inspect plants for signs of disease, pests, or root damage."]
+                }
+            };
+            
+            const icons = {
+                high: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>`,
+                moderate: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path></svg>`,
+                low: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>`
+            };
+            
+            const chartConfig = {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Mean EVI',
+                            data: [],
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgb(34, 197, 94)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 9,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false, title: { display: true, text: 'Vegetation Index (EVI)' } }
+                    },
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: { 
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Mean EVI: ${context.parsed.y.toFixed(3)}`;
+                                }
+                            }
+                        } 
+                    },
+                    interaction: { intersect: false, mode: 'index' },
+                }
+            };
+            
+            const vegetationChart = new Chart(ctx, chartConfig);
+
+            function updateSummaryCards(labels, data) {
+                if (data.length === 0) {
+                    document.getElementById('vi-status').textContent = 'N/A';
+                    document.getElementById('current-month-text').textContent = 'No data in range';
+                    document.getElementById('recommendation-list').innerHTML = '<li>Select a valid date range.</li>';
+                    document.getElementById('peak-month').textContent = 'N/A';
+                    document.getElementById('low-month').textContent = 'N/A';
+                    document.getElementById('overall-trend').textContent = 'N/A';
+                    const statusIconDiv = document.getElementById('status-icon');
+                    statusIconDiv.innerHTML = '';
+                    statusIconDiv.className = 'w-12 h-12 rounded-full flex items-center justify-center mr-4 bg-gray-100 text-gray-600';
+                    return;
+                }
+
+                const currentVi = data[data.length - 1];
+                let status = '', statusKey = '';
+
+                if (currentVi > 0.6) { status = 'High Growth'; statusKey = 'high'; } 
+                else if (currentVi > 0.4) { status = 'Moderate Growth'; statusKey = 'moderate'; }
+                else { status = 'Low Growth / Stress'; statusKey = 'low'; }
+
+                document.getElementById('vi-status').textContent = status;
+                document.getElementById('current-month-text').textContent = labels[labels.length - 1];
+                
+                const statusIconDiv = document.getElementById('status-icon');
+                statusIconDiv.innerHTML = icons[statusKey];
+                statusIconDiv.className = `w-12 h-12 rounded-full flex items-center justify-center mr-4 ${ statusKey === 'high' ? 'bg-green-100 text-green-600' : statusKey === 'moderate' ? 'bg-orange-100 text-orange-600' : 'bg-red-100 text-red-600'}`;
+
+                const recommendationList = document.getElementById('recommendation-list');
+                recommendationList.innerHTML = '';
+                recommendationsFull[statusKey]['general'].forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    recommendationList.appendChild(li);
+                });
+
+                const maxVal = Math.max(...data);
+                const minVal = Math.min(...data);
+                const maxIndex = data.indexOf(maxVal);
+                const minIndex = data.indexOf(minVal);
+                document.getElementById('peak-month').textContent = `${labels[maxIndex]} (${maxVal.toFixed(3)})`;
+                document.getElementById('low-month').textContent = `${labels[minIndex]} (${minVal.toFixed(3)})`;
+
+                const trendDiff = data[data.length - 1] - data[0];
+                let trendText = 'Stable';
+                if (trendDiff > 0.05) trendText = 'Upward';
+                else if (trendDiff < -0.05) trendText = 'Downward';
+                document.getElementById('overall-trend').textContent = trendText;
+            }
+
+            function filterAndRenderData() {
+                const startDateVal = document.getElementById('startDate').value;
+                const endDateVal = document.getElementById('endDate').value;
+                
+                const startDate = startDateVal ? new Date(startDateVal) : null;
+                const endDate = endDateVal ? new Date(endDateVal) : null;
+                if (endDate) endDate.setHours(23, 59, 59, 999);
+
+                const filteredLabels = [];
+                const filteredData = [];
+
+                realDataLabels.forEach((label, index) => {
+                    const currentDate = new Date(label);
+                    const isAfterStart = startDate ? currentDate >= startDate : true;
+                    const isBeforeEnd = endDate ? currentDate <= endDate : true;
+
+                    if (isAfterStart && isBeforeEnd) {
+                        filteredLabels.push(label);
+                        filteredData.push(realEviData[index]);
+                    }
+                });
+
+                vegetationChart.data.labels = filteredLabels;
+                vegetationChart.data.datasets[0].data = filteredData;
+                vegetationChart.update();
+                
+                updateSummaryCards(filteredLabels, filteredData);
+            }
+
+            document.getElementById('filterBtn').addEventListener('click', filterAndRenderData);
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+                filterAndRenderData();
+            });
+
+            // Initial load
+            filterAndRenderData();
+        });
+    </script>
+</body>
+</html>

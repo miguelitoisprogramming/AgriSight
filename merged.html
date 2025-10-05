@@ -1,0 +1,2685 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Health Monitoring Map</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.1.0/ol.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+      .header { 
+        padding: 10px 20px; 
+        background-color: white; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        z-index: 1000; 
+        position: relative; 
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      h1 { margin: 0; font-size: 1.5em; color: #333; }
+      
+      .sidebar-toggle {
+        background: #f8f9fa;
+        color: #374151;
+        border: 1px solid #e5e7eb;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1.1em;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+      }
+      
+      .sidebar-toggle:hover {
+        background: #f1f5f9;
+        border-color: #d1d5db;
+        color: #1f2937;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+      }
+      
+      .sidebar-toggle:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      }
+      
+      .sidebar-toggle svg {
+        transition: transform 0.2s ease;
+      }
+      
+      .sidebar-toggle:hover svg {
+        transform: scale(1.05);
+      }
+      #map { 
+        position: absolute; 
+        top: 60px; 
+        right: 0; 
+        bottom: 0; 
+        left: 300px; 
+        transition: left 0.3s ease;
+      }
+
+      /* --- SIDEBAR STYLES --- */
+      .sidebar {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        width: 300px;
+        height: calc(100vh - 60px);
+        background: #ffffff;
+        color: #333333;
+        z-index: 999;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 0 15px rgba(0,0,0,0.08);
+        border-right: 1px solid #e5e7eb;
+        transition: transform 0.3s ease;
+      }
+
+
+      /* Navigation Tabs */
+      .nav-tabs {
+        display: flex;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .nav-tab {
+        flex: 1;
+        padding: 12px 8px;
+        text-align: center;
+        font-size: 0.8em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-bottom: 3px solid transparent;
+        background: transparent;
+        color: #6b7280;
+      }
+
+      .nav-tab:hover {
+        background: #f1f5f9;
+        color: #374151;
+      }
+
+      .nav-tab.active {
+        background: #ffffff;
+        border-bottom-color: #3b82f6;
+        color: #1f2937;
+        box-shadow: 0 -2px 0 0 #3b82f6;
+      }
+
+      /* Tab Content */
+      .tab-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #ffffff;
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.active {
+        display: block;
+      }
+
+      /* Sections */
+      .section {
+        margin-bottom: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .section-header h3 {
+        margin: 0;
+        font-size: 1.1em;
+        font-weight: 700;
+        color: #1f2937;
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        font-size: 1.2em;
+        cursor: pointer;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+
+      .close-btn:hover {
+        color: #6b7280;
+        background: #f3f4f6;
+      }
+
+      /* Time Controls Section */
+      .time-controls-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .time-controls-container select {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #374151;
+        font-size: 0.9em;
+      }
+      .time-controls-container select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      /* Weather Section */
+      .weather-container {
+        background: #ffffff;
+        border-radius: 6px;
+        padding: 16px;
+        margin-top: 10px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      }
+
+      .weather-placeholder {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .weather-icon {
+        font-size: 2em;
+      }
+
+      .weather-info {
+        flex: 1;
+      }
+
+      .temperature {
+        font-size: 1.5em;
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #1f2937;
+      }
+
+      .condition {
+        font-size: 0.9em;
+        color: #6b7280;
+        margin-bottom: 3px;
+      }
+
+      .humidity {
+        font-size: 0.8em;
+        color: #9ca3af;
+      }
+
+
+      /* Blooming Stats */
+      .blooming-stats {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .stat-item {
+        flex: 1;
+        text-align: center;
+        background: #ffffff;
+        border-radius: 6px;
+        padding: 12px 8px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+      }
+
+      .stat-value {
+        font-size: 1.5em;
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #1f2937;
+      }
+
+      .stat-label {
+        font-size: 0.7em;
+        color: #6b7280;
+      }
+
+      /* Layer Controls */
+      .layer-controls {
+        margin-top: 10px;
+      }
+
+      .layer-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .layer-item:last-child {
+        border-bottom: none;
+      }
+
+      .layer-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #3b82f6;
+      }
+
+      .layer-item label {
+        flex: 1;
+        font-size: 0.9em;
+        cursor: pointer;
+        color: #374151;
+      }
+
+      .layer-preview {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        border: 1px solid #d1d5db;
+      }
+
+      .layer-preview.rainfall {
+        background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+      }
+
+      .layer-preview.temperature {
+        background: linear-gradient(45deg, #ef4444, #dc2626);
+      }
+
+      .layer-preview.humidity {
+        background: linear-gradient(45deg, #06b6d4, #0891b2);
+      }
+
+      .layer-preview.soil-moisture {
+        background: linear-gradient(45deg, #8b5cf6, #7c3aed);
+      }
+
+      /* Risk Alerts */
+      .risk-alerts {
+        margin-top: 10px;
+      }
+
+      .alert-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        border-left: 4px solid;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+      }
+
+      .alert-item.high {
+        background: #fef2f2;
+        border-left-color: #ef4444;
+      }
+
+      .alert-item.medium {
+        background: #fffbeb;
+        border-left-color: #f59e0b;
+      }
+
+      .alert-item.low {
+        background: #eff6ff;
+        border-left-color: #3b82f6;
+      }
+
+      .alert-icon {
+        font-size: 1.2em;
+      }
+
+      .alert-content {
+        flex: 1;
+      }
+
+      .alert-title {
+        font-weight: 600;
+        font-size: 0.9em;
+        margin-bottom: 2px;
+        color: #1f2937;
+      }
+
+      .alert-location {
+        font-size: 0.8em;
+        color: #6b7280;
+      }
+
+      /* Statistics Grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .stat-card {
+        background: #ffffff;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+      }
+
+      .stat-title {
+        font-size: 0.8em;
+        color: #6b7280;
+        margin-bottom: 5px;
+      }
+
+      .stat-number {
+        font-size: 1.3em;
+        font-weight: 700;
+        color: #1f2937;
+      }
+
+      /* Details Section */
+      .details-section {
+        padding: 15px 20px;
+        border-top: 1px solid #e5e7eb;
+        background: #f8f9fa;
+      }
+
+      .details-label {
+        font-size: 0.8em;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #374151;
+      }
+
+      .details-content {
+        font-size: 0.9em;
+        color: #6b7280;
+        font-style: italic;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .sidebar {
+          width: 100%;
+          height: 50vh;
+          top: auto;
+          bottom: 0;
+          left: 0;
+          right: 0;
+        }
+        
+        #map {
+          left: 0;
+          bottom: 50vh;
+        }
+        
+        .nav-tab {
+          font-size: 0.7em;
+          padding: 8px 4px;
+        }
+        
+        .tab-content {
+          padding: 15px;
+        }
+        
+        .section {
+          margin-bottom: 15px;
+          padding: 10px;
+        }
+      }
+
+      /* Animation for smooth transitions */
+      .tab-panel {
+        animation: fadeIn 0.3s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Hover effects for interactive elements */
+
+      .stat-card:hover {
+        background: #f8f9fa;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+
+      .alert-item:hover {
+        background: #f9fafb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+
+      .anomaly-details {
+        margin-top: 15px;
+        padding: 12px;
+        background: #ffffff;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      }
+
+      .anomaly-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .status-label {
+        font-weight: 600;
+        color: #374151;
+      }
+
+      .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .status-badge.high {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+      }
+
+      .status-badge.low {
+        background: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+      }
+
+      .status-badge.normal {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+      }
+
+      .core-analysis {
+        margin-top: 10px;
+      }
+
+      .analysis-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+
+      .analysis-card {
+        background: #ffffff;
+        border-radius: 6px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        text-align: center;
+      }
+
+      .analysis-label {
+        font-size: 0.8em;
+        color: #6b7280;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      .analysis-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 4px;
+      }
+
+      .analysis-confidence {
+        font-size: 0.7em;
+        color: #9ca3af;
+      }
+
+      .ai-analysis {
+        margin-top: 10px;
+      }
+
+      .causal-text {
+        background: #ffffff;
+        border-radius: 6px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+        font-size: 0.9em;
+        color: #374151;
+        line-height: 1.5;
+      }
+
+      .ai-button {
+        width: 100%;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 12px 16px;
+        font-size: 0.9em;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        margin-bottom: 15px;
+      }
+
+      .ai-button:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+
+      .ai-button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .ai-icon {
+        font-size: 1.1em;
+      }
+
+      .ai-loading {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+        color: #6b7280;
+        font-size: 0.9em;
+        border: 1px solid #e5e7eb;
+      }
+
+      .ai-explanation {
+        background: #f0f9ff;
+        border-left: 4px solid #3b82f6;
+        border-radius: 0 6px 6px 0;
+        padding: 16px;
+        margin-top: 15px;
+      }
+
+      .explanation-header {
+        font-weight: 600;
+        color: #1e40af;
+        margin-bottom: 8px;
+        font-size: 0.9em;
+      }
+
+      .explanation-text {
+        color: #1e40af;
+        font-size: 0.9em;
+        line-height: 1.5;
+      }
+
+      .trend-visualization {
+        margin-top: 10px;
+      }
+
+      .chart-container {
+        background: #ffffff;
+        border-radius: 6px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #trend-chart {
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      /* Modal Analysis Styles */
+      .analysis-content {
+        margin-top: 15px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .analysis-tabs {
+        display: flex;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .analysis-tab {
+        flex: 1;
+        padding: 12px 8px;
+        text-align: center;
+        font-size: 0.8em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: transparent;
+        color: #6b7280;
+        border-bottom: 3px solid transparent;
+      }
+
+      .analysis-tab:hover {
+        background: #f1f5f9;
+        color: #374151;
+      }
+
+      .analysis-tab.active {
+        background: #ffffff;
+        color: #1f2937;
+        border-bottom-color: #3b82f6;
+      }
+
+      .analysis-panels {
+        background: #ffffff;
+        min-height: 300px;
+      }
+
+      .analysis-panel {
+        display: none;
+        padding: 20px;
+      }
+
+      .analysis-panel.active {
+        display: block;
+      }
+
+      .anomaly-description {
+        margin-top: 15px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #3b82f6;
+      }
+
+      .anomaly-description p {
+        margin: 0;
+        color: #374151;
+        font-size: 0.9em;
+        line-height: 1.5;
+      }
+
+      /* --- Farmer-Friendly Popup (Hover) --- */
+      .ol-popup {
+        position: absolute; background-color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        padding: 15px; border-radius: 10px; border: 1px solid #cccccc;
+        bottom: 12px; left: -50px; min-width: 280px; pointer-events: none;
+      }
+      .ol-popup:after, .ol-popup:before { top: 100%; border: solid transparent; content: " "; height: 0; width: 0; position: absolute; pointer-events: none; }
+      .ol-popup:after { border-top-color: white; border-width: 10px; left: 48px; margin-left: -10px; }
+      .ol-popup:before { border-top-color: #cccccc; border-width: 11px; left: 48px; margin-left: -11px; }
+      .popup-header { margin: 0 0 10px 0; font-size: 1.2em; font-weight: bold; }
+      .popup-content p { margin: 5px 0; font-size: 1em; display: flex; align-items: center; }
+      .popup-icon { width: 24px; height: 24px; margin-right: 8px; }
+      .level-good { color: #28a745; }
+      .level-moderate { color: #ffc107; }
+      .level-poor { color: #dc3545; }
+
+      /* --- Popup closer from index.html --- */
+      .ol-popup-closer {
+        text-decoration: none;
+        position: absolute;
+        top: 2px;
+        right: 8px;
+      }
+      .ol-popup-closer:after {
+        content: "✖";
+      }
+
+      /* --- Detailed Modal (Click) --- */
+      .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6);
+        z-index: 1001; display: flex; align-items: center; justify-content: center;
+        opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+      .modal-overlay.visible { opacity: 1; visibility: visible; }
+      .modal-content {
+        background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 750px;
+        max-height: 90vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        position: relative; transform: scale(0.9); transition: transform 0.3s ease;
+      }
+      .modal-overlay.visible .modal-content { transform: scale(1); }
+      .modal-close { position: absolute; top: 10px; right: 15px; font-size: 24px; font-weight: bold; cursor: pointer; color: #888; text-decoration: none; }
+      .modal-header h2 { margin-top: 0; color: #1f2937; }
+      .modal-section { margin-bottom: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+      .modal-section h3 { color: #1f2937; font-size: 1.2em; margin-bottom: 15px; margin-top: 0;}
+      
+      .detailed-data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+      .detailed-data-table th, .detailed-data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      .detailed-data-table th { background-color: #f2f2f2; font-size: 0.8em; }
+
+      .actions-section { display: flex; gap: 20px; align-items: center; }
+      .button { 
+        padding: 10px 15px; 
+        border: none; 
+        border-radius: 5px; 
+        color: white; 
+        cursor: pointer; 
+        font-size: 1em; 
+        display: inline-flex; 
+        align-items: center; 
+        gap: 8px; 
+        transition: transform 0.1s ease, background-color 0.2s ease, opacity 0.2s ease;
+      }
+      .button:hover {
+        opacity: 0.85;
+      }
+      .button:active {
+        transform: scale(0.96);
+      }
+      .counter { font-size: 1.2em; font-weight: bold; }
+      #approve-btn { background-color: #28a745; } #approve-count { color: #28a745; }
+      #disapprove-btn { background-color: #dc3545; } #disapprove-count { color: #dc3545; }
+      
+      /* --- Enhanced Comments Section --- */
+      .comments-list {
+        list-style: none;
+        padding: 0;
+        margin-top: 15px;
+        max-height: 250px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+        padding-right: 10px; /* For scrollbar */
+      }
+      
+      .comments-list li {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px 15px;
+        border-left: 4px solid #3b82f6;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      }
+
+      .comment-avatar {
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .comment-icon {
+        width: 20px;
+        height: 20px;
+        color: #6b7280;
+      }
+
+      .comment-body {
+        flex-grow: 1;
+      }
+
+      .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+
+      .comment-author {
+        font-weight: 700;
+        color: #1f2937;
+        font-size: 0.9em;
+      }
+
+      .comment-timestamp {
+        font-size: 0.75em;
+        color: #9ca3af;
+      }
+
+      .comment-text {
+        font-size: 0.9em;
+        color: #374151;
+        line-height: 1.5;
+        word-wrap: break-word;
+      }
+
+      .no-comments-placeholder {
+        text-align: center;
+        padding: 40px 20px;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        color: #9ca3af;
+      }
+      .no-comments-placeholder svg {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 10px;
+        opacity: 0.5;
+      }
+      .no-comments-placeholder p {
+        margin: 0;
+        font-size: 1em;
+        font-weight: 500;
+      }
+
+      /* Comment Form */
+      .comment-form {
+        margin-top: 20px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+      
+      .comment-form-header {
+        padding: 12px 15px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .comment-form-header h4 {
+        margin: 0;
+        font-size: 1em;
+        font-weight: 600;
+        color: #374151;
+      }
+      
+      .comment-form-body {
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .comment-form-body input, .comment-form-body textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        box-sizing: border-box;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9em;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .comment-form-body input:focus, .comment-form-body textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      .textarea-wrapper {
+        position: relative;
+      }
+      
+      .char-counter {
+        position: absolute;
+        bottom: 8px;
+        right: 10px;
+        font-size: 0.75em;
+        color: #9ca3af;
+        background-color: #ffffff;
+        padding: 0 4px;
+      }
+      
+      .comment-form-footer {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border-top: 1px solid #e5e7eb;
+        text-align: right;
+        border-radius: 0 0 8px 8px;
+      }
+      
+      #submit-comment {
+        background-color: #16a34a;
+        margin: 0;
+        width: auto;
+      }
+      #submit-comment:hover {
+        background-color: #15803d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>AgriSight</h1>
+      <button id="sidebar-toggle" class="sidebar-toggle">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Navigation Tabs -->
+      <div class="nav-tabs">
+        <div class="nav-tab active" data-tab="comhub">COMHUB</div>
+        <div class="nav-tab" data-tab="blooming">BLOOMING</div>
+        <div class="nav-tab" data-tab="highrisk">HIGH RISK</div>
+        <div class="nav-tab" data-tab="statistics">STATISTICS</div>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="tab-content">
+        <!-- COMHUB Tab -->
+        <div class="tab-panel active" id="comhub-panel">
+          
+          <div class="section">
+            <div class="section-header">
+              <h3>TIME CONTROL</h3>
+            </div>
+            <div class="time-controls-container">
+              <select id="month-select">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+              </select>
+              <select id="year-select">
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h3>WEATHER</h3>
+              <button class="close-btn">&times;</button>
+            </div>
+            <div class="weather-container">
+              <div class="weather-placeholder">
+                <div class="weather-icon">🌤️</div>
+                <div class="weather-info">
+                  <div class="temperature">28°C</div>
+                  <div class="condition">Partly Cloudy</div>
+                  <div class="humidity">Humidity: 65%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BLOOMING Tab -->
+        <div class="tab-panel" id="blooming-panel">
+          <div class="section">
+            <div class="section-header">
+              <h3>BLOOMING STATUS</h3>
+            </div>
+            <div class="blooming-stats">
+              <div class="stat-item">
+                <div class="stat-value">85%</div>
+                <div class="stat-label">Active Blooming</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">12%</div>
+                <div class="stat-label">Pre-Bloom</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">3%</div>
+                <div class="stat-label">Post-Bloom</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h3>ENVIRONMENTAL LAYERS</h3>
+            </div>
+            <div class="layer-controls">
+              <div class="layer-item">
+                <input type="checkbox" id="rainfall-layer" checked>
+                <label for="rainfall-layer">Rainfall</label>
+                <div class="layer-preview rainfall"></div>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" id="temperature-layer" checked>
+                <label for="temperature-layer">Temperature</label>
+                <div class="layer-preview temperature"></div>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" id="humidity-layer">
+                <label for="humidity-layer">Humidity</label>
+                <div class="layer-preview humidity"></div>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" id="soil-moisture-layer">
+                <label for="soil-moisture-layer">Soil Moisture</label>
+                <div class="layer-preview soil-moisture"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HIGH RISK Tab -->
+        <div class="tab-panel" id="highrisk-panel">
+          <div class="section">
+            <div class="section-header">
+              <h3>RISK ALERTS</h3>
+            </div>
+            <div class="risk-alerts">
+              <div class="alert-item high">
+                <div class="alert-icon">⚠️</div>
+                <div class="alert-content">
+                  <div class="alert-title">Drought Risk</div>
+                  <div class="alert-location">Northern Region</div>
+                </div>
+              </div>
+              <div class="alert-item medium">
+                <div class="alert-icon">🌡️</div>
+                <div class="alert-content">
+                  <div class="alert-title">High Temperature</div>
+                  <div class="alert-location">Central Region</div>
+                </div>
+              </div>
+              <div class="alert-item low">
+                <div class="alert-icon">💧</div>
+                <div class="alert-content">
+                  <div class="alert-title">Excessive Rainfall</div>
+                  <div class="alert-location">Southern Region</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATISTICS Tab -->
+        <div class="tab-panel" id="statistics-panel">
+          <div class="section">
+            <div class="section-header">
+              <h3>REGIONAL STATISTICS</h3>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-title">Total Plots</div>
+                <div class="stat-number">1,247</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-title">Healthy Plots</div>
+                <div class="stat-number">892</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-title">Moderate Risk</div>
+                <div class="stat-number">298</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-title">High Risk</div>
+                <div class="stat-number">57</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- NEW SECTION FOR DASHBOARD LINK -->
+          <div class="section">
+            <div class="section-header">
+                <h3>Advanced Analysis</h3>
+            </div>
+            <a href="dashboard.html" target="_blank">
+              <button id="openDashboardBtn" class="ai-button" style="width: 100%; margin: 10px 0 0 0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                <span>Open EVI Trend Dashboard</span>
+              </button>
+            </a>
+          </div>
+        </div>
+
+        <!-- ANALYSIS Tab -->
+      </div>
+
+      <!-- Details Section -->
+    </div>
+
+    <div id="map"></div>
+
+    <div id="info-popup" class="ol-popup">
+      <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+      <div id="info-popup-content"></div>
+    </div>
+
+    <div id="comments-modal-overlay" class="modal-overlay">
+      <div class="modal-content">
+        <a href="#" id="modal-close" class="modal-close">&times;</a>
+        <div class="modal-header"><h2 id="modal-title">Plot Details</h2></div>
+        <div class="modal-body">
+
+          <div class="modal-section">
+            <h3>Community Feedback</h3>
+            <div class="actions-section">
+              <button id="approve-btn" class="button"></button>
+              <span id="approve-count" class="counter">0</span>
+              <button id="disapprove-btn" class="button"></button>
+              <span id="disapprove-count" class="counter">0</span>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <h3>Anomaly Analysis</h3>
+            <div id="analysis-content" class="analysis-content">
+              <div class="analysis-tabs">
+                <div class="analysis-tab active" data-analysis-tab="anomaly">Anomaly Details</div>
+                <div class="analysis-tab" data-analysis-tab="core">Core Analysis</div>
+                <div class="analysis-tab" data-analysis-tab="ai">AI Analysis</div>
+                <div class="analysis-tab" data-analysis-tab="trend">Trend Chart</div>
+              </div>
+              
+              <div class="analysis-panels">
+                <!-- Anomaly Details Panel -->
+                <div class="analysis-panel active" id="anomaly-panel">
+                  <div class="anomaly-status">
+                    <span class="status-label">Anomaly Status:</span>
+                    <span id="modal-anomaly-status-badge" class="status-badge"></span>
+                  </div>
+                  <div class="anomaly-description">
+                    <p id="modal-anomaly-description"></p>
+                  </div>
+                </div>
+                
+                <!-- Core Analysis Panel -->
+                <div class="analysis-panel" id="core-panel">
+                  <div class="analysis-grid">
+                    <div class="analysis-card">
+                      <div class="analysis-label">Current Intensity</div>
+                      <div id="modal-current-intensity" class="analysis-value"></div>
+                    </div>
+                    <div class="analysis-card">
+                      <div class="analysis-label">AI-Calculated Avg.</div>
+                      <div id="modal-ai-average" class="analysis-value"></div>
+                      <div id="modal-ai-confidence" class="analysis-confidence"></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- AI Analysis Panel -->
+                <div class="analysis-panel" id="ai-panel">
+                  <div class="causal-text">
+                    <p id="modal-causal-analysis"></p>
+                  </div>
+                  <button id="modal-generate-explanation" class="ai-button">
+                    <span class="ai-icon">⚡</span>
+                    Generate New AI Explanation
+                  </button>
+                  <div id="modal-ai-loading" class="ai-loading" style="display: none;">
+                    Generating live analysis...
+                  </div>
+                  <div id="modal-ai-explanation" class="ai-explanation" style="display: none;">
+                    <div class="explanation-header">Live AI Analysis:</div>
+                    <div id="modal-explanation-text"></div>
+                  </div>
+                </div>
+                
+                <!-- Trend Chart Panel -->
+                <div class="analysis-panel" id="trend-panel">
+                  <div class="chart-container">
+                    <canvas id="modal-trend-chart" width="400" height="200"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <h3>Comments & Observations</h3>
+            <ul id="comments-list" class="comments-list">
+              <!-- Comments will be dynamically inserted here -->
+            </ul>
+            <form id="comment-form" class="comment-form">
+              <div class="comment-form-header">
+                <h4>Add Your Observation</h4>
+              </div>
+              <div class="comment-form-body">
+                <input type="text" id="username-input" placeholder="Your Name" required>
+                <div class="textarea-wrapper">
+                  <textarea id="comment-textarea" placeholder="Share your findings, e.g., 'Noticed signs of pest activity on the west side of the plot...'" required rows="3"></textarea>
+                  <span id="char-counter" class="char-counter">200</span>
+                </div>
+              </div>
+              <div class="comment-form-footer">
+                <button type="submit" id="submit-comment" class="ai-button">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  <span>Post Comment</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="modal-section">
+            <h3>Detailed Field Data</h3>
+            <table id="detailed-data-table" class="detailed-data-table"></table>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.1.0/dist/ol.js"></script>
+    <script>
+      const key = 'lAI3najcq0aAZTeFJcbS';
+
+      // --- SVG ICONS ---
+      const ICONS = {
+        good: `<svg class="popup-icon" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>`,
+        moderate: `<svg class="popup-icon" viewBox="0 0 24 24" fill="#ffc107"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2V7h2v7z"></path></svg>`,
+        poor: `<svg class="popup-icon" viewBox="0 0 24 24" fill="#dc3545"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>`,
+        approve: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"></path></svg>`,
+        disapprove: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14-.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`,
+        user: `<svg class="comment-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>`
+      };
+
+      // --- SIMULATED BACKEND ---
+      const featureDatabase = {};
+      function getFeatureData(featureId) {
+        if (!featureDatabase[featureId]) {
+          featureDatabase[featureId] = {
+            approvals: Math.floor(Math.random() * 20), 
+            disapprovals: Math.floor(Math.random() * 5),
+            comments: [{ user: 'System', text: 'Initial dataset loaded.' }]
+          };
+        }
+        return featureDatabase[featureId];
+      }
+
+      // --- SETUP: HTML Elements ---
+      const infoPopupContainer = document.getElementById('info-popup');
+      const infoPopupContent = document.getElementById('info-popup-content');
+      const popupCloser = document.getElementById('popup-closer');
+      const modalOverlay = document.getElementById('comments-modal-overlay');
+      const modalClose = document.getElementById('modal-close');
+      const modalTitle = document.getElementById('modal-title');
+      const detailedDataTable = document.getElementById('detailed-data-table');
+      const approveBtn = document.getElementById('approve-btn');
+      const approveCount = document.getElementById('approve-count');
+      const disapproveBtn = document.getElementById('disapprove-btn');
+      const disapproveCount = document.getElementById('disapprove-count');
+      const commentsList = document.getElementById('comments-list');
+      const commentForm = document.getElementById('comment-form');
+      const usernameInput = document.getElementById('username-input');
+      const commentTextarea = document.getElementById('comment-textarea');
+      const charCounter = document.getElementById('char-counter');
+      const MAX_CHARS = 200;
+      let currentFeatureId = null;
+
+      const openDashboardBtn = document.getElementById('openDashboardBtn');
+
+      const infoOverlay = new ol.Overlay({ 
+        element: infoPopupContainer,
+        autoPan: {
+          animation: {
+            duration: 250,
+          },
+        },
+      });
+
+      // --- DATA GENERATION & PRESENTATION (REVISED) ---
+
+      /**
+       * DEPRECATED: This function is replaced by generateDistrictTimeSeriesData to support monthly data.
+       */
+      function generateScientificData() {
+        // This function is no longer used.
+        return {};
+      }
+
+      // Real EVI data from CSV files
+      const eviData = {
+        'BAGUIO': [
+          {Date: '2020-01-01', Mean: 0.5547767, Minimum: 0.1713, Maximum: 0.6933, Count: 330.0, 'Standard Deviation': 0.0629956, Variance: 0.0039685, 'Upper Quartile': 0.596325, 'Upper 1.5 IQR': 0.6933, Median: 0.56435, 'Lower 1.5 IQR': 0.4167, 'Lower Quartile': 0.52115},
+          {Date: '2020-02-01', Mean: 0.4868224, Minimum: 0.2411, Maximum: 0.7682, Count: 330.0, 'Standard Deviation': 0.0975239, Variance: 0.0095109, 'Upper Quartile': 0.559925, 'Upper 1.5 IQR': 0.7222, Median: 0.48635, 'Lower 1.5 IQR': 0.2411, 'Lower Quartile': 0.425125},
+          {Date: '2020-03-01', Mean: 0.5648173, Minimum: 0.3228, Maximum: 0.7549, Count: 330.0, 'Standard Deviation': 0.0809413, Variance: 0.0065515, 'Upper Quartile': 0.619025, 'Upper 1.5 IQR': 0.7549, Median: 0.5783, 'Lower 1.5 IQR': 0.3691, 'Lower Quartile': 0.518425},
+          {Date: '2020-04-01', Mean: 0.5317182, Minimum: 0.3923, Maximum: 0.7155, Count: 330.0, 'Standard Deviation': 0.054548, Variance: 0.0029755, 'Upper Quartile': 0.567675, 'Upper 1.5 IQR': 0.678, Median: 0.53025, 'Lower 1.5 IQR': 0.3923, 'Lower Quartile': 0.4935},
+          {Date: '2020-05-01', Mean: 0.5464061, Minimum: 0.2032, Maximum: 0.7254, Count: 330.0, 'Standard Deviation': 0.0797514, Variance: 0.0063603, 'Upper Quartile': 0.6036, 'Upper 1.5 IQR': 0.7254, Median: 0.55165, 'Lower 1.5 IQR': 0.3508, 'Lower Quartile': 0.499775},
+          {Date: '2020-06-01', Mean: 0.5130476, Minimum: 0.1175, Maximum: 0.6819, Count: 330.0, 'Standard Deviation': 0.064866, Variance: 0.0042076, 'Upper Quartile': 0.5433, 'Upper 1.5 IQR': 0.6295, Median: 0.5116, 'Lower 1.5 IQR': 0.4008, 'Lower Quartile': 0.485275},
+          {Date: '2020-07-01', Mean: 0.5294, Minimum: 0.1172, Maximum: 0.7495, Count: 330.0, 'Standard Deviation': 0.1054085, Variance: 0.0111109, 'Upper Quartile': 0.5896, 'Upper 1.5 IQR': 0.7279, Median: 0.53705, 'Lower 1.5 IQR': 0.3416, 'Lower Quartile': 0.490275},
+          {Date: '2020-08-01', Mean: 0.5556227, Minimum: 0.1563, Maximum: 0.7621, Count: 330.0, 'Standard Deviation': 0.1119123, Variance: 0.0125244, 'Upper Quartile': 0.633375, 'Upper 1.5 IQR': 0.7621, Median: 0.5707, 'Lower 1.5 IQR': 0.3094, 'Lower Quartile': 0.503425},
+          {Date: '2020-09-01', Mean: 0.5424591, Minimum: 0.2078, Maximum: 0.7778, Count: 330.0, 'Standard Deviation': 0.0980762, Variance: 0.0096189, 'Upper Quartile': 0.61185, 'Upper 1.5 IQR': 0.7778, Median: 0.55955, 'Lower 1.5 IQR': 0.3312, 'Lower Quartile': 0.4982},
+          {Date: '2020-10-01', Mean: 0.5291452, Minimum: 0.1751, Maximum: 0.7072, Count: 330.0, 'Standard Deviation': 0.0985514, Variance: 0.0097124, 'Upper Quartile': 0.60605, 'Upper 1.5 IQR': 0.7072, Median: 0.5586, 'Lower 1.5 IQR': 0.2844, 'Lower Quartile': 0.45555}
+        ],
+        'BUHANGIN': [
+          {Date: '2020-01-01', Mean: 0.4446471, Minimum: 0.0574, Maximum: 0.5942, Count: 104.0, 'Standard Deviation': 0.1273513, Variance: 0.0162184, 'Upper Quartile': 0.523725, 'Upper 1.5 IQR': 0.5942, Median: 0.5046, 'Lower 1.5 IQR': 0.2433, 'Lower Quartile': 0.397825},
+          {Date: '2020-02-01', Mean: 0.465374, Minimum: 0.0087, Maximum: 0.634, Count: 104.0, 'Standard Deviation': 0.1308878, Variance: 0.0171316, 'Upper Quartile': 0.55075, 'Upper 1.5 IQR': 0.634, Median: 0.50855, 'Lower 1.5 IQR': 0.244, 'Lower Quartile': 0.414675},
+          {Date: '2020-03-01', Mean: 0.4555029, Minimum: 0.0988, Maximum: 0.6921, Count: 104.0, 'Standard Deviation': 0.1294967, Variance: 0.0167694, 'Upper Quartile': 0.5433, 'Upper 1.5 IQR': 0.6921, Median: 0.49245, 'Lower 1.5 IQR': 0.1742, 'Lower Quartile': 0.3901},
+          {Date: '2020-04-01', Mean: 0.4398154, Minimum: 0.0993, Maximum: 0.6703, Count: 104.0, 'Standard Deviation': 0.1214672, Variance: 0.0147543, 'Upper Quartile': 0.524225, 'Upper 1.5 IQR': 0.6703, Median: 0.4805, 'Lower 1.5 IQR': 0.1355, 'Lower Quartile': 0.365925},
+          {Date: '2020-05-01', Mean: 0.3970221, Minimum: 0.0868, Maximum: 0.5657, Count: 104.0, 'Standard Deviation': 0.1068937, Variance: 0.0114263, 'Upper Quartile': 0.467425, 'Upper 1.5 IQR': 0.5657, Median: 0.43665, 'Lower 1.5 IQR': 0.2218, 'Lower Quartile': 0.35745}
+        ],
+        'BUNAWAN': [
+          {Date: '2020-01-01', Mean: 0.4144592, Minimum: 0.055, Maximum: 0.608, Count: 49.0, 'Standard Deviation': 0.1169187, Variance: 0.01367, 'Upper Quartile': 0.4979, 'Upper 1.5 IQR': 0.608, Median: 0.4428, 'Lower 1.5 IQR': 0.2336, 'Lower Quartile': 0.3552},
+          {Date: '2020-02-01', Mean: 0.4294827, Minimum: 0.1682, Maximum: 0.5934, Count: 52.0, 'Standard Deviation': 0.1181323, Variance: 0.0139552, 'Upper Quartile': 0.52235, 'Upper 1.5 IQR': 0.5934, Median: 0.4605, 'Lower 1.5 IQR': 0.1682, 'Lower Quartile': 0.3475},
+          {Date: '2020-03-01', Mean: 0.4178712, Minimum: 0.1122, Maximum: 0.6059, Count: 52.0, 'Standard Deviation': 0.1205387, Variance: 0.0145296, 'Upper Quartile': 0.501175, 'Upper 1.5 IQR': 0.6059, Median: 0.4307, 'Lower 1.5 IQR': 0.174, 'Lower Quartile': 0.362275},
+          {Date: '2020-04-01', Mean: 0.395666, Minimum: 0.0561, Maximum: 0.561, Count: 53.0, 'Standard Deviation': 0.1232249, Variance: 0.0151844, 'Upper Quartile': 0.474, 'Upper 1.5 IQR': 0.561, Median: 0.4309, 'Lower 1.5 IQR': 0.165, 'Lower Quartile': 0.3442},
+          {Date: '2020-05-01', Mean: 0.3812094, Minimum: 0.0561, Maximum: 0.5243, Count: 53.0, 'Standard Deviation': 0.1122531, Variance: 0.0126008, 'Upper Quartile': 0.4657, 'Upper 1.5 IQR': 0.5243, Median: 0.4241, 'Lower 1.5 IQR': 0.1482, 'Lower Quartile': 0.3218}
+        ],
+        'CALINAN': [
+          {Date: '2020-01-01', Mean: 0.5568236, Minimum: 0.3539, Maximum: 0.6411, Count: 178.0, 'Standard Deviation': 0.0562133, Variance: 0.0031599, 'Upper Quartile': 0.598275, 'Upper 1.5 IQR': 0.6411, Median: 0.56975, 'Lower 1.5 IQR': 0.4172, 'Lower Quartile': 0.518625},
+          {Date: '2020-02-01', Mean: 0.5283916, Minimum: 0.2411, Maximum: 0.7539, Count: 178.0, 'Standard Deviation': 0.0868997, Variance: 0.0075516, 'Upper Quartile': 0.5958, 'Upper 1.5 IQR': 0.7539, Median: 0.5196, 'Lower 1.5 IQR': 0.3166, 'Lower Quartile': 0.475225},
+          {Date: '2020-03-01', Mean: 0.5768787, Minimum: 0.3772, Maximum: 0.6878, Count: 178.0, 'Standard Deviation': 0.0452055, Variance: 0.0020435, 'Upper Quartile': 0.606075, 'Upper 1.5 IQR': 0.6878, Median: 0.58185, 'Lower 1.5 IQR': 0.4719, 'Lower Quartile': 0.5497},
+          {Date: '2020-04-01', Mean: 0.5214039, Minimum: 0.3046, Maximum: 0.7595, Count: 178.0, 'Standard Deviation': 0.0586327, Variance: 0.0034378, 'Upper Quartile': 0.55995, 'Upper 1.5 IQR': 0.6779, Median: 0.52115, 'Lower 1.5 IQR': 0.4014, 'Lower Quartile': 0.478825},
+          {Date: '2020-05-01', Mean: 0.5147854, Minimum: 0.3328, Maximum: 0.6472, Count: 178.0, 'Standard Deviation': 0.0558719, Variance: 0.0031217, 'Upper Quartile': 0.556625, 'Upper 1.5 IQR': 0.6472, Median: 0.51445, 'Lower 1.5 IQR': 0.3662, 'Lower Quartile': 0.47545}
+        ],
+        'MARILOG': [
+          {Date: '2020-01-01', Mean: 0.5730969, Minimum: 0.1999, Maximum: 0.7347, Count: 1111.0, 'Standard Deviation': 0.0663758, Variance: 0.0044058, 'Upper Quartile': 0.6132, 'Upper 1.5 IQR': 0.7233, Median: 0.5812, 'Lower 1.5 IQR': 0.4307, 'Lower Quartile': 0.5391},
+          {Date: '2020-02-01', Mean: 0.5087788, Minimum: 0.1444, Maximum: 0.7682, Count: 1111.0, 'Standard Deviation': 0.0865604, Variance: 0.0074927, 'Upper Quartile': 0.57575, 'Upper 1.5 IQR': 0.7514, Median: 0.4829, 'Lower 1.5 IQR': 0.2759, 'Lower Quartile': 0.45295},
+          {Date: '2020-03-01', Mean: 0.5827268, Minimum: 0.3737, Maximum: 0.7895, Count: 1111.0, 'Standard Deviation': 0.0599718, Variance: 0.0035966, 'Upper Quartile': 0.61915, 'Upper 1.5 IQR': 0.7244, Median: 0.5854, 'Lower 1.5 IQR': 0.4413, 'Lower Quartile': 0.5479},
+          {Date: '2020-04-01', Mean: 0.5195289, Minimum: 0.3034, Maximum: 0.7624, Count: 1111.0, 'Standard Deviation': 0.0680213, Variance: 0.0046269, 'Upper Quartile': 0.5621, 'Upper 1.5 IQR': 0.6879, Median: 0.5197, 'Lower 1.5 IQR': 0.3431, 'Lower Quartile': 0.47365},
+          {Date: '2020-05-01', Mean: 0.4942472, Minimum: 0.186, Maximum: 0.6901, Count: 1111.0, 'Standard Deviation': 0.0714144, Variance: 0.0051, 'Upper Quartile': 0.54035, 'Upper 1.5 IQR': 0.6641, Median: 0.5012, 'Lower 1.5 IQR': 0.3277, 'Lower Quartile': 0.45465}
+        ],
+        'PAQUIBATO': [
+          {Date: '2020-01-01', Mean: 0.5434112, Minimum: 0.2943, Maximum: 0.7488, Count: 900.0, 'Standard Deviation': 0.0595321, Variance: 0.0035441, 'Upper Quartile': 0.583725, 'Upper 1.5 IQR': 0.7013, Median: 0.5394, 'Lower 1.5 IQR': 0.386, 'Lower Quartile': 0.502775},
+          {Date: '2020-02-01', Mean: 0.5428867, Minimum: 0.2516, Maximum: 0.7355, Count: 900.0, 'Standard Deviation': 0.0829163, Variance: 0.0068751, 'Upper Quartile': 0.61075, 'Upper 1.5 IQR': 0.7355, Median: 0.5316, 'Lower 1.5 IQR': 0.2784, 'Lower Quartile': 0.475475},
+          {Date: '2020-03-01', Mean: 0.554963, Minimum: 0.1648, Maximum: 0.7895, Count: 900.0, 'Standard Deviation': 0.06676, Variance: 0.0044569, 'Upper Quartile': 0.602825, 'Upper 1.5 IQR': 0.7242, Median: 0.55625, 'Lower 1.5 IQR': 0.375, 'Lower Quartile': 0.5111},
+          {Date: '2020-04-01', Mean: 0.4913619, Minimum: 0.1984, Maximum: 0.7787, Count: 900.0, 'Standard Deviation': 0.0641444, Variance: 0.0041145, 'Upper Quartile': 0.5317, 'Upper 1.5 IQR': 0.6508, Median: 0.4925, 'Lower 1.5 IQR': 0.3298, 'Lower Quartile': 0.4502},
+          {Date: '2020-05-01', Mean: 0.4911159, Minimum: 0.1005, Maximum: 0.6743, Count: 900.0, 'Standard Deviation': 0.0704663, Variance: 0.0049655, 'Upper Quartile': 0.539825, 'Upper 1.5 IQR': 0.6626, Median: 0.5015, 'Lower 1.5 IQR': 0.3289, 'Lower Quartile': 0.4537}
+        ],
+        'TALOMO': [
+          {Date: '2020-01-01', Mean: 0.4353011, Minimum: 0.0813, Maximum: 0.6463, Count: 189.0, 'Standard Deviation': 0.1300052, Variance: 0.0169013, 'Upper Quartile': 0.5309, 'Upper 1.5 IQR': 0.6463, Median: 0.4633, 'Lower 1.5 IQR': 0.1262, 'Lower Quartile': 0.359},
+          {Date: '2020-02-01', Mean: 0.40272, Minimum: 0.0744, Maximum: 0.6259, Count: 190.0, 'Standard Deviation': 0.1199354, Variance: 0.0143845, 'Upper Quartile': 0.471975, 'Upper 1.5 IQR': 0.6259, Median: 0.4179, 'Lower 1.5 IQR': 0.1262, 'Lower Quartile': 0.326375},
+          {Date: '2020-03-01', Mean: 0.447134, Minimum: 0.0522, Maximum: 0.6513, Count: 188.0, 'Standard Deviation': 0.1193928, Variance: 0.0142546, 'Upper Quartile': 0.5469, 'Upper 1.5 IQR': 0.6513, Median: 0.46335, 'Lower 1.5 IQR': 0.1305, 'Lower Quartile': 0.3606},
+          {Date: '2020-04-01', Mean: 0.402446, Minimum: 0.0833, Maximum: 0.6195, Count: 187.0, 'Standard Deviation': 0.1005874, Variance: 0.0101178, 'Upper Quartile': 0.48175, 'Upper 1.5 IQR': 0.6195, Median: 0.4245, 'Lower 1.5 IQR': 0.1193, 'Lower Quartile': 0.32945},
+          {Date: '2020-05-01', Mean: 0.4228096, Minimum: 0.1104, Maximum: 0.6791, Count: 187.0, 'Standard Deviation': 0.1104664, Variance: 0.0122028, 'Upper Quartile': 0.5088, 'Upper 1.5 IQR': 0.6791, Median: 0.4523, 'Lower 1.5 IQR': 0.1104, 'Lower Quartile': 0.3328}
+        ],
+        'TORIL': [
+          {Date: '2020-01-01', Mean: 0.5345007, Minimum: 0.1302, Maximum: 0.6473, Count: 304.0, 'Standard Deviation': 0.0875738, Variance: 0.0076692, 'Upper Quartile': 0.59265, 'Upper 1.5 IQR': 0.6473, Median: 0.56995, 'Lower 1.5 IQR': 0.3552, 'Lower Quartile': 0.4897},
+          {Date: '2020-02-01', Mean: 0.4791443, Minimum: 0.0306, Maximum: 0.6756, Count: 305.0, 'Standard Deviation': 0.1208921, Variance: 0.0146149, 'Upper Quartile': 0.5825, 'Upper 1.5 IQR': 0.6756, Median: 0.5022, 'Lower 1.5 IQR': 0.1022, 'Lower Quartile': 0.3768},
+          {Date: '2020-03-01', Mean: 0.5281699, Minimum: 0.0163, Maximum: 0.6721, Count: 306.0, 'Standard Deviation': 0.085069, Variance: 0.0072367, 'Upper Quartile': 0.578375, 'Upper 1.5 IQR': 0.6721, Median: 0.53925, 'Lower 1.5 IQR': 0.3786, 'Lower Quartile': 0.498225},
+          {Date: '2020-04-01', Mean: 0.5222879, Minimum: 0.0328, Maximum: 0.7, Count: 306.0, 'Standard Deviation': 0.0907996, Variance: 0.0082446, 'Upper Quartile': 0.584975, 'Upper 1.5 IQR': 0.7, Median: 0.5353, 'Lower 1.5 IQR': 0.3545, 'Lower Quartile': 0.480325},
+          {Date: '2020-05-01', Mean: 0.5053614, Minimum: 0.0388, Maximum: 0.7434, Count: 306.0, 'Standard Deviation': 0.1200114, Variance: 0.0144027, 'Upper Quartile': 0.57915, 'Upper 1.5 IQR': 0.7434, Median: 0.5284, 'Lower 1.5 IQR': 0.2679, 'Lower Quartile': 0.4532}
+        ],
+        'TUGBOK': [
+          {Date: '2020-01-01', Mean: 0.5394232, Minimum: 0.3442, Maximum: 0.6417, Count: 177.0, 'Standard Deviation': 0.0465629, Variance: 0.0021681, 'Upper Quartile': 0.5801, 'Upper 1.5 IQR': 0.6417, Median: 0.5427, 'Lower 1.5 IQR': 0.416, 'Lower Quartile': 0.507},
+          {Date: '2020-02-01', Mean: 0.5145051, Minimum: 0.3414, Maximum: 0.6961, Count: 177.0, 'Standard Deviation': 0.0753608, Variance: 0.0056792, 'Upper Quartile': 0.575, 'Upper 1.5 IQR': 0.6961, Median: 0.504, 'Lower 1.5 IQR': 0.3414, 'Lower Quartile': 0.4592},
+          {Date: '2020-03-01', Mean: 0.5768881, Minimum: 0.4069, Maximum: 0.6727, Count: 177.0, 'Standard Deviation': 0.0448089, Variance: 0.0020078, 'Upper Quartile': 0.6044, 'Upper 1.5 IQR': 0.6727, Median: 0.5828, 'Lower 1.5 IQR': 0.4827, 'Lower Quartile': 0.5526},
+          {Date: '2020-04-01', Mean: 0.5091842, Minimum: 0.3064, Maximum: 0.7595, Count: 177.0, 'Standard Deviation': 0.0619982, Variance: 0.0038438, 'Upper Quartile': 0.5548, 'Upper 1.5 IQR': 0.6779, Median: 0.5033, 'Lower 1.5 IQR': 0.3393, 'Lower Quartile': 0.4668},
+          {Date: '2020-05-01', Mean: 0.508896, Minimum: 0.3324, Maximum: 0.6667, Count: 177.0, 'Standard Deviation': 0.0604408, Variance: 0.0036531, 'Upper Quartile': 0.5486, 'Upper 1.5 IQR': 0.6667, Median: 0.5109, 'Lower 1.5 IQR': 0.3514, 'Lower Quartile': 0.4679}
+        ]
+      };
+
+      /**
+       * Gets real EVI data for a specific district from the CSV data
+       * @param {string} districtName - The name of the district (e.g., 'BAGUIO').
+       * @returns {Array<Object>} An array of data objects from the CSV data.
+       */
+      function generateDistrictTimeSeriesData(districtName) {
+          const districtData = eviData[districtName.toUpperCase()];
+          if (!districtData) {
+              console.warn(`No EVI data found for district: ${districtName}`);
+              return [];
+          }
+          
+          return districtData.map(dataPoint => {
+              const healthScore = parseFloat(dataPoint.Mean);
+              return {
+                  'healthScore': healthScore,
+                  'File Name': `${districtName}_EVI_MONTHLY_JAN2020-2025`,
+                  'Dataset': districtName,
+                  'aid': `aid-${districtName.toLowerCase()}`,
+                  'Date': dataPoint.Date,
+                  'Count': dataPoint.Count,
+                  'Minimum': dataPoint.Minimum,
+                  'Maximum': dataPoint.Maximum,
+                  'Range': (dataPoint.Maximum - dataPoint.Minimum).toFixed(4),
+                  'Mean': dataPoint.Mean,
+                  'Standard Deviation': dataPoint['Standard Deviation'],
+                  'Variance': dataPoint.Variance,
+                  'Upper Quartile': dataPoint['Upper Quartile'],
+                  'Upper 1.5 IQR': dataPoint['Upper 1.5 IQR'],
+                  'Median': dataPoint.Median,
+                  'Lower 1.5 IQR': dataPoint['Lower 1.5 IQR'],
+                  'Lower Quartile': dataPoint['Lower Quartile']
+              };
+          });
+      }
+
+      function createFarmerFriendlyHTML(data) {
+        let level, iconHTML, levelClass;
+        if (data.healthScore > 0.66) {
+          level = 'Excellent Health'; levelClass = 'level-good'; iconHTML = ICONS.good;
+        } else if (data.healthScore > 0.33) {
+          level = 'Moderate Health'; levelClass = 'level-moderate'; iconHTML = ICONS.moderate;
+        } else {
+          level = 'Poor Health'; levelClass = 'level-poor'; iconHTML = ICONS.poor;
+        }
+        return `
+          <h3 class="popup-header">${data.featureName}</h3>
+          <div class="popup-content">
+            <p>${iconHTML} <strong class="${levelClass}">${level}</strong></p>
+            <p style="font-size: 0.8em; opacity: 0.7;">Click for details and comments.</p>
+          </div>`;
+      }
+
+      // --- DYNAMIC STYLING ---
+      const styleCache = {};
+      function getFeatureStyle(feature) {
+        const scientificData = feature.get('scientificData');
+        if (!scientificData) { // Add a guard in case data isn't ready
+          return new ol.style.Style({ fill: new ol.style.Fill({ color: 'rgba(128,128,128,0.6)' }) });
+        }
+        const healthScore = scientificData.healthScore;
+        let color;
+        // Higher score is now green (good), lower is red (bad)
+        if (healthScore > 0.6) color = 'rgba(40, 167, 69, 0.6)'; // Green (.level-good)
+        else if (healthScore > 0.3) color = 'rgba(255, 193, 7, 0.6)'; // Yellow (.level-moderate)
+        else color = 'rgba(220, 53, 69, 0.6)'; // Red (.level-poor)
+        
+        if (!styleCache[color]) {
+          styleCache[color] = new ol.style.Style({
+            stroke: new ol.style.Stroke({ color: 'rgba(255, 255, 255, 0.8)', width: 1 }),
+            fill: new ol.style.Fill({ color: color }),
+          });
+        }
+        return styleCache[color];
+      }
+      const highlightStyle = new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: '#00ffff', width: 4 }),
+        fill: new ol.style.Fill({ color: 'rgba(0, 255, 255, 0.3)' }),
+      });
+
+      // --- LAYERS & MAP ---
+      const attribution = new ol.control.Attribution({
+        collapsible: false,
+      });
+
+      const baseLayer = new ol.layer.Tile({ 
+        source: new ol.source.TileJSON({ 
+          url: `https://api.maptiler.com/maps/streets-v2/tiles.json?key=${key}`, 
+          tileSize: 512, 
+          crossOrigin: 'anonymous' 
+        }) 
+      });
+      
+      const vectorSource = new ol.source.Vector({ 
+        url: `https://api.maptiler.com/data/0199addb-17ea-7ce6-a731-cb02c1b807e0/features.json?key=${key}`, 
+        format: new ol.format.GeoJSON() 
+      });
+      
+      const vectorLayer = new ol.layer.Vector({ 
+        source: vectorSource, 
+        style: getFeatureStyle 
+      });
+
+      // Environmental layers
+      const rainfallLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          fill: new ol.style.Fill({
+            color: 'rgba(59, 130, 246, 0.3)'
+          }),
+          stroke: new ol.style.Stroke({
+            color: 'rgba(59, 130, 246, 0.6)',
+            width: 1
+          })
+        }),
+        visible: true
+      });
+
+      const temperatureLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          fill: new ol.style.Fill({
+            color: 'rgba(239, 68, 68, 0.3)'
+          }),
+          stroke: new ol.style.Stroke({
+            color: 'rgba(239, 68, 68, 0.6)',
+            width: 1
+          })
+        }),
+        visible: true
+      });
+
+      const humidityLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          fill: new ol.style.Fill({
+            color: 'rgba(6, 182, 212, 0.3)'
+          }),
+          stroke: new ol.style.Stroke({
+            color: 'rgba(6, 182, 212, 0.6)',
+            width: 1
+          })
+        }),
+        visible: false
+      });
+
+      const soilMoistureLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          fill: new ol.style.Fill({
+            color: 'rgba(139, 92, 246, 0.3)'
+          }),
+          stroke: new ol.style.Stroke({
+            color: 'rgba(139, 92, 246, 0.6)',
+            width: 1
+          })
+        }),
+        visible: false
+      });
+      
+      const map = new ol.Map({
+        layers: [baseLayer, vectorLayer, rainfallLayer, temperatureLayer, humidityLayer, soilMoistureLayer], 
+        overlays: [infoOverlay], 
+        controls: ol.control.defaults.defaults({attribution: false}).extend([attribution]),
+        target: 'map',
+        view: new ol.View({ 
+          constrainResolution: true, 
+          center: ol.proj.fromLonLat([125.493160, 7.157645]), 
+          zoom: 9 
+        }),
+      });
+
+      // --- DATA PRE-PROCESSING (UPDATED) ---
+      // This listener attaches the generated time series data to each map feature when it loads.
+      vectorSource.on('featuresloadend', (event) => {
+        event.features.forEach(feature => {
+          // The district names are: BAGUIO, BUHANGIN, BUNAWAN, MARILOG, PAQUIBATO, TALOMO, TORIL, TUGBOK, CALINAN
+          const districtName = (feature.get('text') || 'UNNAMED').toUpperCase().replace(/ /g, '_');
+          const timeSeries = generateDistrictTimeSeriesData(districtName);
+          
+          if (timeSeries.length > 0) {
+              const featureName = feature.get('text') || 'Unnamed Plot';
+
+              // Add featureName to every data point in the series for consistency
+              timeSeries.forEach(dp => dp.featureName = featureName);
+              
+              // Store the full time series on the feature
+              feature.set('timeSeriesData', timeSeries);
+              
+              // Set the latest data point as the current scientific data for styling
+              const latestData = timeSeries[timeSeries.length - 1];
+              feature.set('scientificData', latestData);
+          }
+        });
+        // After features are loaded and processed, update the map to the initial dropdown date
+        updateMapForDate();
+      });
+
+      // --- INTERACTIONS (UPDATED CLICK HANDLER) ---
+      let highlightedFeature = null;
+      map.on('pointermove', function (evt) {
+        if (evt.dragging) return;
+        const feature = map.forEachFeatureAtPixel(evt.pixel, f => f, { layerFilter: l => l === vectorLayer });
+        map.getTargetElement().style.cursor = feature ? 'pointer' : '';
+        if (feature && feature.get('scientificData')) {
+          infoPopupContent.innerHTML = createFarmerFriendlyHTML(feature.get('scientificData'));
+          infoOverlay.setPosition(evt.coordinate);
+        } else {
+          infoOverlay.setPosition(undefined);
+        }
+        if (feature !== highlightedFeature) {
+          if (highlightedFeature) highlightedFeature.setStyle(getFeatureStyle(highlightedFeature));
+          if (feature) feature.setStyle(highlightStyle);
+          highlightedFeature = feature;
+        }
+      });
+
+      // This handler is updated to display the full time series in the modal table when a feature is clicked.
+      map.on('click', function (evt) {
+        const feature = map.forEachFeatureAtPixel(evt.pixel, f => f, { layerFilter: l => l === vectorLayer });
+        if (feature) {
+          const timeSeriesData = feature.get('timeSeriesData');
+          const currentData = feature.get('scientificData');
+          currentFeatureId = currentData.featureName;
+          modalTitle.innerText = `${currentFeatureId} - Monthly EVI Data (2020-2025)`;
+
+          if (timeSeriesData && timeSeriesData.length > 0) {
+            // Get headers from the first data point, excluding internal ones
+            const headers = Object.keys(timeSeriesData[0]).filter(key => key !== 'healthScore' && key !== 'featureName');
+            
+            let tableHTML = '<thead><tr>';
+            // Use replace to better format long header names
+            headers.forEach(header => tableHTML += `<th>${header.replace(' ', '<br>').replace('Deviation', 'Dev')}</th>`);
+            tableHTML += '</tr></thead><tbody>';
+
+            // Create a table row for each month in the time series
+            timeSeriesData.forEach(dataPoint => {
+                tableHTML += '<tr>';
+                headers.forEach(header => {
+                    tableHTML += `<td>${dataPoint[header]}</td>`;
+                });
+                tableHTML += '</tr>';
+            });
+
+            detailedDataTable.innerHTML = tableHTML + '</tbody>';
+            // Make the table container scrollable for the long list of data
+            const tableContainer = document.querySelector('.modal-section .detailed-data-table').parentElement;
+            if(tableContainer){
+              tableContainer.style.maxHeight = '40vh';
+              tableContainer.style.overflowY = 'auto';
+            }
+
+          } else {
+            // Fallback for case where data is missing
+            detailedDataTable.innerHTML = '<tbody><tr><td>No time series data available.</td></tr></tbody>';
+          }
+          
+          updateModalFeedbackContent();
+          
+          // Update the analysis panels in the modal using the CURRENTLY selected data point
+          updateModalAnalysisData(currentData);
+          
+          modalOverlay.classList.add('visible');
+        }
+      });
+
+      // A helper to generate random "time ago" strings
+      function timeAgo() {
+        const periods = ['minutes', 'hours', 'days'];
+        const values = [Math.floor(Math.random() * 59) + 1, Math.floor(Math.random() * 23) + 1, Math.floor(Math.random() * 6) + 1];
+        const i = Math.floor(Math.random() * 3);
+        return `${values[i]} ${periods[i]} ago`;
+      }
+      
+      function updateModalFeedbackContent() {
+        const data = getFeatureData(currentFeatureId);
+        approveCount.innerText = data.approvals;
+        disapproveCount.innerText = data.disapprovals;
+        commentsList.innerHTML = '';
+        
+        if (data.comments.length === 0) {
+          commentsList.innerHTML = `
+            <div class="no-comments-placeholder">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <p>No observations yet. Be the first to share your findings!</p>
+            </div>
+          `;
+        } else {
+          // Add a timestamp to each comment if it doesn't have one
+          data.comments.forEach(comment => {
+            if (!comment.timestamp) {
+              comment.timestamp = timeAgo();
+            }
+          });
+          
+          const commentsHTML = data.comments.map(comment => `
+            <li>
+              <div class="comment-avatar">
+                ${ICONS.user}
+              </div>
+              <div class="comment-body">
+                <div class="comment-header">
+                  <span class="comment-author">${comment.user}</span>
+                  <span class="comment-timestamp">${comment.timestamp}</span>
+                </div>
+                <p class="comment-text">${comment.text}</p>
+              </div>
+            </li>
+          `).reverse().join(''); // Show newest first
+          
+          commentsList.innerHTML = commentsHTML;
+        }
+      }
+
+      // --- SIDEBAR FUNCTIONALITY ---
+      let currentTab = 'comhub';
+      let sidebarVisible = true;
+      let environmentalLayers = {
+        rainfall: true,
+        temperature: true,
+        humidity: false,
+        soilMoisture: false
+      };
+
+      // Analysis data
+      const analysisData = {
+        'paquibato-district': {
+            region: 'Paquibato District',
+            anomalyStatus: 'high', // Poor health
+            currentIntensity: 0.28, // Corresponds to poor health
+            aiBaseline: { calculatedAverage: 0.55, confidence: 0.94 },
+            aiCausalAnalysis: 'Severe anomaly detected. High probability of water stress due to 4 weeks of below-average rainfall. Soil moisture levels are critically low.',
+            trendData: {
+                labels: ['-30d', '-20d', '-10d', 'Current'],
+                datasets: [{ label: 'Soil Moisture Anomaly (%)', data: [-10, -15, -25, -30], borderColor: '#ef4444' }]
+            }
+        },
+        'marilog-district': {
+            region: 'Marilog District',
+            anomalyStatus: 'low', // Moderate health
+            currentIntensity: 0.52,
+            aiBaseline: { calculatedAverage: 0.60, confidence: 0.89 },
+            aiCausalAnalysis: 'Moderate anomaly corresponds with a recent increase in cloud cover, slightly reducing photosynthetic activity. No immediate threat detected.',
+            trendData: {
+                labels: ['-30d', '-20d', '-10d', 'Current'],
+                datasets: [{ label: 'Sunlight Hours (Avg)', data: [7.5, 7.0, 6.2, 5.8], borderColor: '#f59e0b' }]
+            }
+        },
+        'calinan-district': {
+            region: 'Calinan District',
+            anomalyStatus: 'normal', // Good health
+            currentIntensity: 0.81,
+            aiBaseline: { calculatedAverage: 0.78, confidence: 0.96 },
+            aiCausalAnalysis: 'Crop health is within optimal parameters. Consistent rainfall and stable temperatures have contributed to a healthy growth cycle.',
+            trendData: {
+                labels: ['-30d', '-20d', '-10d', 'Current'],
+                datasets: [{ label: 'Vegetation Index (EVI)', data: [0.75, 0.77, 0.79, 0.81], borderColor: '#10b981' }]
+            }
+        },
+        'talomo-district': {
+            region: 'Talomo District',
+            anomalyStatus: 'normal',
+            currentIntensity: 0.75,
+            aiBaseline: { calculatedAverage: 0.72, confidence: 0.91 },
+            aiCausalAnalysis: 'Healthy blooming period observed. Nutrient levels in soil are stable and sufficient for current crop needs.',
+            trendData: {
+                labels: ['-30d', '-20d', '-10d', 'Current'],
+                datasets: [{ label: 'Nitrogen Level (mg/kg)', data: [25, 26, 28, 27], borderColor: '#10b981' }]
+            }
+        },
+        'buhangin-district': {
+            region: 'Buhangin District',
+            anomalyStatus: 'low',
+            currentIntensity: 0.61,
+            aiBaseline: { calculatedAverage: 0.68, confidence: 0.90 },
+            aiCausalAnalysis: 'Slight stress detected, likely due to increased pest activity reported in adjacent areas. Recommend monitoring for signs of infestation.',
+            trendData: {
+                labels: ['-30d', '-20d', '-10d', 'Current'],
+                datasets: [{ label: 'Pest Activity Index', data: [5, 8, 12, 15], borderColor: '#f59e0b' }]
+            }
+        }
+      };
+      
+      /**
+       * Updates the map features to display data for a specific month and year.
+       */
+      function updateMapForDate() {
+        const monthSelect = document.getElementById('month-select');
+        const yearSelect = document.getElementById('year-select');
+        const year = parseInt(yearSelect.value);
+        const month = parseInt(monthSelect.value); // 0-11
+        
+        const features = vectorSource.getFeatures();
+        if (features.length === 0) return; // Don't run if features aren't loaded yet
+        
+        features.forEach(feature => {
+          const timeSeries = feature.get('timeSeriesData');
+          if (!timeSeries) return;
+
+          // Find the data point for the selected year and month
+          const dataForDate = timeSeries.find(dataPoint => {
+            const pointDate = new Date(dataPoint.Date);
+            return pointDate.getUTCFullYear() === year && pointDate.getUTCMonth() === month;
+          });
+
+          if (dataForDate) {
+            // Set this historical data as the "active" data for styling and popups
+            feature.set('scientificData', dataForDate);
+          }
+        });
+
+        // Force the vector layer to re-render with the new styles. This makes color changes immediate.
+        vectorSource.changed();
+      }
+
+      // Tab switching functionality
+      function switchTab(tabName) {
+        // Remove active class from all tabs and panels
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+        
+        // Add active class to selected tab and panel
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        document.getElementById(`${tabName}-panel`).classList.add('active');
+        
+        currentTab = tabName;
+      }
+
+
+      // Environmental layer toggle functionality
+      function toggleEnvironmentalLayer(layerName, isEnabled) {
+        environmentalLayers[layerName] = isEnabled;
+        
+        // Update map layer visibility
+        const layerMap = {
+          'rainfall': rainfallLayer,
+          'temperature': temperatureLayer,
+          'humidity': humidityLayer,
+          'soil-moisture': soilMoistureLayer
+        };
+        
+        if (layerMap[layerName]) {
+          layerMap[layerName].setVisible(isEnabled);
+        }
+        
+        // Update visual feedback
+        const layerItem = document.querySelector(`#${layerName}-layer`).closest('.layer-item');
+        if (isEnabled) {
+          layerItem.style.opacity = '1';
+        } else {
+          layerItem.style.opacity = '0.6';
+        }
+      }
+
+      // Generate environmental data polygons
+      function generateEnvironmentalData() {
+        // Clear existing data
+        rainfallLayer.getSource().clear();
+        temperatureLayer.getSource().clear();
+        humidityLayer.getSource().clear();
+        soilMoistureLayer.getSource().clear();
+
+        // Generate random environmental zones
+        const centerLon = 125.493160;
+        const centerLat = 7.157645;
+        const zoneSize = 0.1; // degrees
+
+        // Generate rainfall zones
+        for (let i = 0; i < 8; i++) {
+          const lon = centerLon + (Math.random() - 0.5) * 0.5;
+          const lat = centerLat + (Math.random() - 0.5) * 0.5;
+          const intensity = Math.random();
+          
+          const feature = new ol.Feature({
+            geometry: new ol.geom.Circle(
+              ol.proj.fromLonLat([lon, lat]),
+              zoneSize * (0.5 + intensity * 0.5) * 1000
+            ),
+            intensity: intensity
+          });
+          
+          // Style based on intensity
+          const opacity = 0.2 + intensity * 0.3;
+          feature.setStyle(new ol.style.Style({
+            fill: new ol.style.Fill({
+              color: `rgba(59, 130, 246, ${opacity})`
+            }),
+            stroke: new ol.style.Stroke({
+              color: `rgba(59, 130, 246, ${opacity + 0.3})`,
+              width: 1
+            })
+          }));
+          
+          rainfallLayer.getSource().addFeature(feature);
+        }
+
+        // Generate temperature zones
+        for (let i = 0; i < 6; i++) {
+          const lon = centerLon + (Math.random() - 0.5) * 0.4;
+          const lat = centerLat + (Math.random() - 0.5) * 0.4;
+          const intensity = Math.random();
+          
+          const feature = new ol.Feature({
+            geometry: new ol.geom.Circle(
+              ol.proj.fromLonLat([lon, lat]),
+              zoneSize * (0.6 + intensity * 0.4) * 1000
+            ),
+            intensity: intensity
+          });
+          
+          // Style based on intensity
+          const opacity = 0.2 + intensity * 0.3;
+          feature.setStyle(new ol.style.Style({
+            fill: new ol.style.Fill({
+              color: `rgba(239, 68, 68, ${opacity})`
+            }),
+            stroke: new ol.style.Stroke({
+              color: `rgba(239, 68, 68, ${opacity + 0.3})`,
+              width: 1
+            })
+          }));
+          
+          temperatureLayer.getSource().addFeature(feature);
+        }
+
+        // Generate humidity zones
+        for (let i = 0; i < 5; i++) {
+          const lon = centerLon + (Math.random() - 0.5) * 0.3;
+          const lat = centerLat + (Math.random() - 0.5) * 0.3;
+          const intensity = Math.random();
+          
+          const feature = new ol.Feature({
+            geometry: new ol.geom.Circle(
+              ol.proj.fromLonLat([lon, lat]),
+              zoneSize * (0.4 + intensity * 0.6) * 1000
+            ),
+            intensity: intensity
+          });
+          
+          // Style based on intensity
+          const opacity = 0.2 + intensity * 0.3;
+          feature.setStyle(new ol.style.Style({
+            fill: new ol.style.Fill({
+              color: `rgba(6, 182, 212, ${opacity})`
+            }),
+            stroke: new ol.style.Stroke({
+              color: `rgba(6, 182, 212, ${opacity + 0.3})`,
+              width: 1
+            })
+          }));
+          
+          humidityLayer.getSource().addFeature(feature);
+        }
+
+        // Generate soil moisture zones
+        for (let i = 0; i < 7; i++) {
+          const lon = centerLon + (Math.random() - 0.5) * 0.4;
+          const lat = centerLat + (Math.random() - 0.5) * 0.4;
+          const intensity = Math.random();
+          
+          const feature = new ol.Feature({
+            geometry: new ol.geom.Circle(
+              ol.proj.fromLonLat([lon, lat]),
+              zoneSize * (0.5 + intensity * 0.5) * 1000
+            ),
+            intensity: intensity
+          });
+          
+          // Style based on intensity
+          const opacity = 0.2 + intensity * 0.3;
+          feature.setStyle(new ol.style.Style({
+            fill: new ol.style.Fill({
+              color: `rgba(139, 92, 246, ${opacity})`
+            }),
+            stroke: new ol.style.Stroke({
+              color: `rgba(139, 92, 246, ${opacity + 0.3})`,
+              width: 1
+            })
+          }));
+          
+          soilMoistureLayer.getSource().addFeature(feature);
+        }
+      }
+
+      // Weather data update functionality
+      function updateWeatherData() {
+        const weatherData = {
+          temperature: Math.floor(Math.random() * 10) + 25, // 25-35°C
+          condition: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Rainy'][Math.floor(Math.random() * 4)],
+          humidity: Math.floor(Math.random() * 30) + 50 // 50-80%
+        };
+
+        document.querySelector('.temperature').textContent = `${weatherData.temperature}°C`;
+        document.querySelector('.condition').textContent = weatherData.condition;
+        document.querySelector('.humidity').textContent = `Humidity: ${weatherData.humidity}%`;
+      }
+
+      // Blooming status update functionality
+      function updateBloomingStatus() {
+        const bloomingData = {
+          active: Math.floor(Math.random() * 20) + 75, // 75-95%
+          preBloom: Math.floor(Math.random() * 15) + 5, // 5-20%
+          postBloom: Math.floor(Math.random() * 10) + 1 // 1-11%
+        };
+
+        // Normalize to ensure they add up to 100%
+        const total = bloomingData.active + bloomingData.preBloom + bloomingData.postBloom;
+        bloomingData.active = Math.round((bloomingData.active / total) * 100);
+        bloomingData.preBloom = Math.round((bloomingData.preBloom / total) * 100);
+        bloomingData.postBloom = 100 - bloomingData.active - bloomingData.preBloom;
+
+        document.querySelectorAll('.stat-value').forEach((element, index) => {
+          const values = [bloomingData.active, bloomingData.preBloom, bloomingData.postBloom];
+          if (values[index] !== undefined) {
+            element.textContent = `${values[index]}%`;
+          }
+        });
+      }
+
+      // Risk alerts update functionality
+      function updateRiskAlerts() {
+        const riskTypes = [
+          { type: 'high', icon: '⚠️', title: 'Drought Risk', location: 'Northern Region' },
+          { type: 'medium', icon: '🌡️', title: 'High Temperature', location: 'Central Region' },
+          { type: 'low', icon: '💧', title: 'Excessive Rainfall', location: 'Southern Region' },
+          { type: 'high', icon: '🌪️', title: 'Storm Warning', location: 'Eastern Region' },
+          { type: 'medium', icon: '🐛', title: 'Pest Alert', location: 'Western Region' }
+        ];
+
+        const alerts = riskTypes.slice(0, Math.floor(Math.random() * 3) + 1); // 1-3 random alerts
+        const alertsContainer = document.querySelector('.risk-alerts');
+        
+        alertsContainer.innerHTML = alerts.map(alert => `
+          <div class="alert-item ${alert.type}">
+            <div class="alert-icon">${alert.icon}</div>
+            <div class="alert-content">
+              <div class="alert-title">${alert.title}</div>
+              <div class="alert-location">${alert.location}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Statistics update functionality
+      function updateStatistics() {
+        const stats = {
+          totalPlots: Math.floor(Math.random() * 500) + 1000,
+          healthyPlots: Math.floor(Math.random() * 200) + 700,
+          moderateRisk: Math.floor(Math.random() * 100) + 200,
+          highRisk: Math.floor(Math.random() * 50) + 20
+        };
+
+        const statNumbers = document.querySelectorAll('.stat-number');
+        statNumbers[0].textContent = stats.totalPlots.toLocaleString();
+        statNumbers[1].textContent = stats.healthyPlots.toLocaleString();
+        statNumbers[2].textContent = stats.moderateRisk.toLocaleString();
+        statNumbers[3].textContent = stats.highRisk.toLocaleString();
+      }
+
+      // --- MODAL EVENT LISTENERS & SETUP ---
+      document.addEventListener('DOMContentLoaded', () => {
+        approveBtn.innerHTML = ICONS.approve + ' Data Looks Correct';
+        disapproveBtn.innerHTML = ICONS.disapprove + ' Data Seems Wrong';
+        
+        // Initialize sidebar functionality
+        initializeSidebar();
+      });
+
+      function initializeSidebar() {
+        const monthSelect = document.getElementById('month-select');
+        const yearSelect = document.getElementById('year-select');
+
+        // Set initial dropdown values to the latest date
+        monthSelect.value = '11'; // December (0-indexed)
+        yearSelect.value = '2025';
+
+        // Add event listeners for time controls
+        monthSelect.addEventListener('change', updateMapForDate);
+        yearSelect.addEventListener('change', updateMapForDate);
+
+        // Tab switching event listeners
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            const tabName = tab.getAttribute('data-tab');
+            switchTab(tabName);
+          });
+        });
+
+
+        // Environmental layer toggles
+        document.querySelectorAll('.layer-item input[type="checkbox"]').forEach(checkbox => {
+          checkbox.addEventListener('change', (e) => {
+            const layerName = e.target.id.replace('-layer', '');
+            toggleEnvironmentalLayer(layerName, e.target.checked);
+          });
+        });
+
+        // Weather close button
+        const weatherCloseBtn = document.querySelector('.weather-container .close-btn');
+        if (weatherCloseBtn) {
+          weatherCloseBtn.addEventListener('click', () => {
+            document.querySelector('.weather-container').style.display = 'none';
+          });
+        }
+
+        // Sidebar toggle functionality
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebar = document.querySelector('.sidebar');
+        const map = document.getElementById('map');
+        
+        if (sidebarToggle && sidebar && map) {
+          sidebarToggle.addEventListener('click', () => {
+            sidebarVisible = !sidebarVisible;
+            
+            if (sidebarVisible) {
+              sidebar.style.transform = 'translateX(0)';
+              map.style.left = '300px';
+              // Show hamburger icon
+              sidebarToggle.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              `;
+            } else {
+              sidebar.style.transform = 'translateX(-100%)';
+              map.style.left = '0';
+              // Show close icon
+              sidebarToggle.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              `;
+            }
+          });
+        }
+
+        // Initialize data
+        updateWeatherData();
+        updateBloomingStatus();
+        updateRiskAlerts();
+        updateStatistics();
+        updateGrowthRates('all');
+        
+        // Initialize environmental layers
+        generateEnvironmentalData();
+
+        // Analysis region selector
+        const analysisRegionSelect = document.getElementById('analysis-region-select');
+        if (analysisRegionSelect) {
+          analysisRegionSelect.addEventListener('change', (e) => {
+            const regionKey = e.target.value;
+            if (regionKey && analysisData[regionKey]) {
+              updateAnalysisData(analysisData[regionKey]);
+            } else {
+              hideAnalysisContent();
+            }
+          });
+        }
+
+        // AI explanation button
+        const generateExplanationBtn = document.getElementById('generate-explanation');
+        if (generateExplanationBtn) {
+          generateExplanationBtn.addEventListener('click', generateAIExplanation);
+        }
+
+        // Modal analysis tabs
+        document.querySelectorAll('.analysis-tab').forEach(tab => {
+          tab.addEventListener('click', (e) => {
+            const tabName = e.target.getAttribute('data-analysis-tab');
+            switchModalAnalysisTab(tabName);
+          });
+        });
+
+        // Modal AI explanation button
+        const modalGenerateExplanationBtn = document.getElementById('modal-generate-explanation');
+        if (modalGenerateExplanationBtn) {
+          modalGenerateExplanationBtn.addEventListener('click', generateModalAIExplanation);
+        } 
+
+        // Event Listener for the Dashboard Button ---
+        if (openDashboardBtn) {
+            openDashboardBtn.addEventListener('click', () => {
+                const dashboardContext = `dashboard.html`;
+                window.open(dashboardContext, '_blank');
+              });
+            };
+
+
+        // Update data every 30 seconds
+        setInterval(() => {
+          updateWeatherData();
+          updateBloomingStatus();
+          updateRiskAlerts();
+          updateStatistics();
+          generateEnvironmentalData(); // Update environmental layers
+        }, 30000);
+      }
+
+      // Analysis functionality
+      function updateAnalysisData(data) {
+        // Show anomaly details
+        const anomalyDetails = document.getElementById('anomaly-details');
+        const statusBadge = document.getElementById('anomaly-status-badge');
+        anomalyDetails.style.display = 'block';
+        statusBadge.textContent = data.anomalyStatus.toUpperCase();
+        statusBadge.className = `status-badge ${data.anomalyStatus}`;
+
+        // Show core analysis
+        const coreAnalysis = document.getElementById('core-analysis-content');
+        document.getElementById('current-intensity').textContent = `${(data.currentIntensity * 100).toFixed(0)}%`;
+        document.getElementById('ai-average').textContent = `${(data.aiBaseline.calculatedAverage * 100).toFixed(0)}%`;
+        document.getElementById('ai-confidence').textContent = `Confidence: ${(data.aiBaseline.confidence * 100).toFixed(0)}%`;
+        coreAnalysis.style.display = 'block';
+
+        // Show AI analysis
+        const aiAnalysis = document.getElementById('ai-analysis-content');
+        document.getElementById('causal-analysis').textContent = data.aiCausalAnalysis;
+        aiAnalysis.style.display = 'block';
+
+        // Show trend visualization
+        const trendContent = document.getElementById('trend-content');
+        trendContent.style.display = 'block';
+        createTrendChart(data.trendData);
+      }
+
+      function hideAnalysisContent() {
+        document.getElementById('anomaly-details').style.display = 'none';
+        document.getElementById('core-analysis-content').style.display = 'none';
+        document.getElementById('ai-analysis-content').style.display = 'none';
+        document.getElementById('trend-content').style.display = 'none';
+        document.getElementById('ai-loading').style.display = 'none';
+        document.getElementById('ai-explanation').style.display = 'none';
+      }
+
+      function createTrendChart(trendData) {
+        const canvas = document.getElementById('trend-chart');
+        const ctx = canvas.getContext('2d');
+        
+        // Clear previous chart
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const dataset = trendData.datasets[0];
+        const data = trendData.labels.map((label, index) => ({
+          x: index,
+          y: dataset.data[index],
+          label: label
+        }));
+
+        // Chart dimensions
+        const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+        const width = canvas.width - margin.left - margin.right;
+        const height = canvas.height - margin.top - margin.bottom;
+
+        // Find min/max values
+        const minY = Math.min(...dataset.data);
+        const maxY = Math.max(...dataset.data);
+        const yRange = maxY - minY;
+        const padding = yRange * 0.1;
+
+        // Scale functions
+        const xScale = (x) => margin.left + (x / (data.length - 1)) * width;
+        const yScale = (y) => margin.top + height - ((y - minY + padding) / (yRange + padding * 2)) * height;
+
+        // Draw grid lines
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+          const y = margin.top + (height / 4) * i;
+          ctx.beginPath();
+          ctx.moveTo(margin.left, y);
+          ctx.lineTo(margin.left + width, y);
+          ctx.stroke();
+        }
+
+        // Draw axes
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + height);
+        ctx.lineTo(margin.left + width, margin.top + height);
+        ctx.stroke();
+
+        // Draw line
+        ctx.strokeStyle = dataset.borderColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        data.forEach((point, index) => {
+          if (index === 0) {
+            ctx.moveTo(xScale(point.x), yScale(point.y));
+          } else {
+            ctx.lineTo(xScale(point.x), yScale(point.y));
+          }
+        });
+        ctx.stroke();
+
+        // Draw points
+        ctx.fillStyle = dataset.borderColor;
+        data.forEach(point => {
+          ctx.beginPath();
+          ctx.arc(xScale(point.x), yScale(point.y), 4, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+
+        // Draw labels
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        data.forEach(point => {
+          ctx.fillText(point.label, xScale(point.x), margin.top + height + 20);
+        });
+
+        // Draw Y-axis labels
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+          const value = minY + (yRange / 4) * i;
+          const y = margin.top + height - (height / 4) * i;
+          ctx.fillText(value.toFixed(1), margin.left - 10, y + 4);
+        }
+
+        // Draw title
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(dataset.label, canvas.width / 2, 15);
+      }
+
+      async function generateAIExplanation() {
+        const regionSelect = document.getElementById('analysis-region-select');
+        const regionKey = regionSelect.value;
+        
+        if (!regionKey || !analysisData[regionKey]) return;
+
+        const loading = document.getElementById('ai-loading');
+        const explanation = document.getElementById('ai-explanation');
+        const button = document.getElementById('generate-explanation');
+
+        // Show loading state
+        loading.style.display = 'block';
+        explanation.style.display = 'none';
+        button.disabled = true;
+        button.innerHTML = '<span class="ai-icon">⚡</span> Generating...';
+
+        try {
+          // Simulate AI processing delay
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Generate contextual explanation based on region data
+          const data = analysisData[regionKey];
+          const explanations = [
+            `Based on the current intensity of ${(data.currentIntensity * 100).toFixed(0)}% and trend analysis, the anomaly appears to be driven by environmental factors including temperature variations and precipitation patterns.`,
+            `The AI analysis indicates that the ${data.anomalyStatus} anomaly status is primarily influenced by seasonal changes and regional environmental conditions affecting water quality parameters.`,
+            `Recent data shows a correlation between the anomaly intensity and external factors such as agricultural runoff, industrial activity, and weather patterns specific to the ${data.region} region.`,
+            `The trend visualization reveals a ${data.trendData.datasets[0].data[data.trendData.datasets[0].data.length - 1] > data.trendData.datasets[0].data[0] ? 'rising' : 'declining'} pattern in ${data.trendData.datasets[0].label.toLowerCase()}, which directly correlates with the observed anomaly levels.`
+          ];
+          
+          const randomExplanation = explanations[Math.floor(Math.random() * explanations.length)];
+          
+          // Show explanation
+          document.getElementById('explanation-text').textContent = randomExplanation;
+          explanation.style.display = 'block';
+          
+        } catch (error) {
+          console.error('Error generating AI explanation:', error);
+          document.getElementById('explanation-text').textContent = 'Failed to generate AI explanation. Please try again.';
+          explanation.style.display = 'block';
+        } finally {
+          // Hide loading state
+          loading.style.display = 'none';
+          button.disabled = false;
+          button.innerHTML = '<span class="ai-icon">⚡</span> Generate New AI Explanation';
+        }
+      }
+
+      // Modal analysis functionality
+      function updateModalAnalysisData(scientificData) {
+        // Generate analysis data based on the feature's health score
+        const healthScore = scientificData.healthScore;
+        let anomalyStatus, anomalyDescription, currentIntensity, aiAverage, aiConfidence, causalAnalysis, trendData;
+
+        if (healthScore > 0.6) {
+          anomalyStatus = 'normal';
+          anomalyDescription = 'This region shows healthy crop conditions with optimal growth parameters. All environmental indicators are within normal ranges.';
+          currentIntensity = healthScore;
+          aiAverage = healthScore * 0.95;
+          aiConfidence = 0.92;
+          causalAnalysis = 'Normal growth patterns indicate favorable weather conditions, adequate soil nutrients, and proper irrigation management.';
+          trendData = {
+            labels: ['-30d', '-20d', '-10d', 'Current'],
+            datasets: [{ label: 'Health Index', data: [0.6, 0.65, 0.7, healthScore], borderColor: '#10b981' }]
+          };
+        } else if (healthScore > 0.3) {
+          anomalyStatus = 'low';
+          anomalyDescription = 'This region shows moderate stress indicators. Some environmental factors may be affecting crop health.';
+          currentIntensity = healthScore;
+          aiAverage = healthScore * 1.1;
+          aiConfidence = 0.88;
+          causalAnalysis = 'Moderate stress may be due to seasonal weather changes, minor nutrient deficiencies, or irrigation variations.';
+          trendData = {
+            labels: ['-30d', '-20d', '-10d', 'Current'],
+            datasets: [{ label: 'Stress Index', data: [0.4, 0.45, 0.5, healthScore], borderColor: '#f59e0b' }]
+          };
+        } else {
+          anomalyStatus = 'high';
+          anomalyDescription = 'This region shows significant stress indicators requiring immediate attention. Environmental conditions are suboptimal.';
+          currentIntensity = healthScore;
+          aiAverage = healthScore * 1.2;
+          aiConfidence = 0.95;
+          causalAnalysis = 'High stress levels likely caused by extreme weather events, soil degradation, water stress, or pest infestations.';
+          trendData = {
+            labels: ['-30d', '-20d', '-10d', 'Current'],
+            datasets: [{ label: 'Stress Index', data: [0.2, 0.25, 0.3, healthScore], borderColor: '#ef4444' }]
+          };
+        }
+
+        // Update anomaly status
+        const statusBadge = document.getElementById('modal-anomaly-status-badge');
+        statusBadge.textContent = anomalyStatus.toUpperCase();
+        statusBadge.className = `status-badge ${anomalyStatus}`;
+
+        // Update anomaly description
+        document.getElementById('modal-anomaly-description').textContent = anomalyDescription;
+
+        // Update core analysis
+        document.getElementById('modal-current-intensity').textContent = `${(currentIntensity * 100).toFixed(0)}%`;
+        document.getElementById('modal-ai-average').textContent = `${(aiAverage * 100).toFixed(0)}%`;
+        document.getElementById('modal-ai-confidence').textContent = `Confidence: ${(aiConfidence * 100).toFixed(0)}%`;
+
+        // Update AI analysis
+        document.getElementById('modal-causal-analysis').textContent = causalAnalysis;
+
+        // Update trend chart
+        createModalTrendChart(trendData);
+
+        // Store current analysis data for AI generation
+        window.currentModalAnalysisData = {
+          anomalyStatus,
+          currentIntensity,
+          aiAverage,
+          aiConfidence,
+          causalAnalysis,
+          trendData
+        };
+      }
+
+      function switchModalAnalysisTab(tabName) {
+        // Remove active class from all tabs and panels
+        document.querySelectorAll('.analysis-tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.analysis-panel').forEach(panel => panel.classList.remove('active'));
+        
+        // Add active class to selected tab and panel
+        document.querySelector(`[data-analysis-tab="${tabName}"]`).classList.add('active');
+        document.getElementById(`${tabName}-panel`).classList.add('active');
+      }
+
+      function createModalTrendChart(trendData) {
+        const canvas = document.getElementById('modal-trend-chart');
+        const ctx = canvas.getContext('2d');
+        
+        // Clear previous chart
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const dataset = trendData.datasets[0];
+        const data = trendData.labels.map((label, index) => ({
+          x: index,
+          y: dataset.data[index],
+          label: label
+        }));
+
+        // Chart dimensions
+        const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+        const width = canvas.width - margin.left - margin.right;
+        const height = canvas.height - margin.top - margin.bottom;
+
+        // Find min/max values
+        const minY = Math.min(...dataset.data);
+        const maxY = Math.max(...dataset.data);
+        const yRange = maxY - minY;
+        const padding = yRange * 0.1;
+
+        // Scale functions
+        const xScale = (x) => margin.left + (x / (data.length - 1)) * width;
+        const yScale = (y) => margin.top + height - ((y - minY + padding) / (yRange + padding * 2)) * height;
+
+        // Draw grid lines
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+          const y = margin.top + (height / 4) * i;
+          ctx.beginPath();
+          ctx.moveTo(margin.left, y);
+          ctx.lineTo(margin.left + width, y);
+          ctx.stroke();
+        }
+
+        // Draw axes
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + height);
+        ctx.lineTo(margin.left + width, margin.top + height);
+        ctx.stroke();
+
+        // Draw line
+        ctx.strokeStyle = dataset.borderColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        data.forEach((point, index) => {
+          if (index === 0) {
+            ctx.moveTo(xScale(point.x), yScale(point.y));
+          } else {
+            ctx.lineTo(xScale(point.x), yScale(point.y));
+          }
+        });
+        ctx.stroke();
+
+        // Draw points
+        ctx.fillStyle = dataset.borderColor;
+        data.forEach(point => {
+          ctx.beginPath();
+          ctx.arc(xScale(point.x), yScale(point.y), 4, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+
+        // Draw labels
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        data.forEach(point => {
+          ctx.fillText(point.label, xScale(point.x), margin.top + height + 20);
+        });
+
+        // Draw Y-axis labels
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+          const value = minY + (yRange / 4) * i;
+          const y = margin.top + height - (height / 4) * i;
+          ctx.fillText(value.toFixed(2), margin.left - 10, y + 4);
+        }
+
+        // Draw title
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(dataset.label, canvas.width / 2, 15);
+      }
+
+      async function generateModalAIExplanation() {
+        if (!window.currentModalAnalysisData) return;
+
+        const loading = document.getElementById('modal-ai-loading');
+        const explanation = document.getElementById('modal-ai-explanation');
+        const button = document.getElementById('modal-generate-explanation');
+
+        // Show loading state
+        loading.style.display = 'block';
+        explanation.style.display = 'none';
+        button.disabled = true;
+        button.innerHTML = '<span class="ai-icon">⚡</span> Generating...';
+
+        try {
+          // Simulate AI processing delay
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Generate contextual explanation based on current analysis data
+          const data = window.currentModalAnalysisData;
+          const explanations = [
+            `Based on the current intensity of ${(data.currentIntensity * 100).toFixed(0)}% and the ${data.anomalyStatus} anomaly status, this region shows ${data.anomalyStatus === 'high' ? 'significant stress' : data.anomalyStatus === 'low' ? 'moderate stress' : 'healthy conditions'}.`,
+            `The AI analysis indicates that the ${data.anomalyStatus} anomaly status is primarily influenced by environmental factors affecting crop health in this specific region.`,
+            `Recent trend data shows a ${data.trendData.datasets[0].data[data.trendData.datasets[0].data.length - 1] > data.trendData.datasets[0].data[0] ? 'rising' : 'declining'} pattern in ${data.trendData.datasets[0].label.toLowerCase()}, which correlates with the observed ${data.anomalyStatus} anomaly levels.`,
+            `The confidence level of ${(data.aiConfidence * 100).toFixed(0)}% suggests that the AI baseline calculations are reliable for this region's specific environmental conditions.`
+          ];
+          
+          const randomExplanation = explanations[Math.floor(Math.random() * explanations.length)];
+          
+          // Show explanation
+          document.getElementById('modal-explanation-text').textContent = randomExplanation;
+          explanation.style.display = 'block';
+          
+        } catch (error) {
+          console.error('Error generating AI explanation:', error);
+          document.getElementById('modal-explanation-text').textContent = 'Failed to generate AI explanation. Please try again.';
+          explanation.style.display = 'block';
+        } finally {
+          // Hide loading state
+          loading.style.display = 'none';
+          button.disabled = false;
+          button.innerHTML = '<span class="ai-icon">⚡</span> Generate New AI Explanation';
+        }
+      }
+      
+      // Popup closer functionality from index.html
+      popupCloser.onclick = function () {
+        infoOverlay.setPosition(undefined);
+        popupCloser.blur();
+        return false;
+      };
+      
+      modalClose.onclick = () => modalOverlay.classList.remove('visible');
+      modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('visible'); };
+      approveBtn.onclick = () => { if (currentFeatureId) { getFeatureData(currentFeatureId).approvals++; updateModalFeedbackContent(); } };
+      disapproveBtn.onclick = () => { if (currentFeatureId) { getFeatureData(currentFeatureId).disapprovals++; updateModalFeedbackContent(); } };
+      
+      commentTextarea.addEventListener('input', () => {
+          const remaining = MAX_CHARS - commentTextarea.value.length;
+          charCounter.textContent = remaining;
+          charCounter.style.color = remaining < 20 ? (remaining < 0 ? '#dc3545' : '#f59e0b') : '#9ca3af';
+      });
+
+      commentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const user = usernameInput.value.trim();
+        const text = commentTextarea.value.trim();
+        
+        if (!user || !text) {
+          alert('Please provide your name and a comment.');
+          return;
+        }
+
+        if (text.length > MAX_CHARS) {
+            alert(`Comment cannot exceed ${MAX_CHARS} characters.`);
+            return;
+        }
+
+        if (currentFeatureId) {
+          getFeatureData(currentFeatureId).comments.push({ user, text });
+          updateModalFeedbackContent();
+          commentTextarea.value = '';
+          // Reset character counter
+          charCounter.textContent = MAX_CHARS;
+          charCounter.style.color = '#9ca3af';
+        }
+      });
+
+    </script>
+  </body>
+</html>
